@@ -1,6 +1,6 @@
-using Raylib_cs;
 using System;
 using System.Numerics;
+using Raylib_cs;
 
 namespace DarkArmsProto
 {
@@ -12,10 +12,10 @@ namespace DarkArmsProto
 
         private Color color;
         private float time;
-        private float floatSpeed = 2f;
-        private float rotationSpeed = 90f;
-        private float magnetRadius = 3f;
-        private float collectRadius = 1.5f;
+
+        private float floatSpeed = GameConfig.SoulFloatSpeed;
+        private float magnetRadius = GameConfig.SoulMagnetRadius;
+        private float collectRadius = GameConfig.SoulCollectRadius;
 
         public Soul(Vector3 position, SoulType type)
         {
@@ -30,7 +30,7 @@ namespace DarkArmsProto
                 SoulType.Beast => new Color(255, 136, 0, 255),
                 SoulType.Undead => new Color(0, 255, 0, 255),
                 SoulType.Demon => new Color(255, 0, 0, 255),
-                _ => Color.White
+                _ => Color.White,
             };
         }
 
@@ -51,7 +51,7 @@ namespace DarkArmsProto
                 // Move toward player
                 Vector3 direction = playerPosition - Position;
                 direction = Vector3.Normalize(direction);
-                Position += direction * 10f * deltaTime;
+                Position += direction * GameConfig.SoulMoveSpeed * deltaTime;
             }
 
             if (distance < collectRadius)
@@ -62,17 +62,26 @@ namespace DarkArmsProto
 
         public void Render()
         {
-            if (IsCollected) return;
+            if (IsCollected)
+                return;
 
             // Draw soul orb
             Raylib.DrawSphere(Position, 0.3f, color);
 
             // Glow effect
-            Raylib.DrawSphere(Position, 0.4f, new Color((byte)color.R, (byte)color.G, (byte)color.B, (byte)100));
+            Raylib.DrawSphere(
+                Position,
+                0.4f,
+                new Color((byte)color.R, (byte)color.G, (byte)color.B, (byte)100)
+            );
 
             // Outer pulse
             float pulseSize = 0.5f + MathF.Sin(time * 3f) * 0.1f;
-            Raylib.DrawSphere(Position, pulseSize, new Color((byte)color.R, (byte)color.G, (byte)color.B, (byte)50));
+            Raylib.DrawSphere(
+                Position,
+                pulseSize,
+                new Color((byte)color.R, (byte)color.G, (byte)color.B, (byte)50)
+            );
         }
     }
 }

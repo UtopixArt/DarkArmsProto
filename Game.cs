@@ -50,7 +50,7 @@ namespace DarkArmsProto
             damageNumbers = new List<DamageNumber>();
 
             // Spawn initial enemies
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < GameConfig.InitialEnemyCount; i++)
             {
                 enemies.Add(enemySpawner.SpawnEnemy());
             }
@@ -68,7 +68,7 @@ namespace DarkArmsProto
                 if (newProjectiles.Count > 0)
                 {
                     projectiles.AddRange(newProjectiles);
-                    player.AddScreenShake(0.05f);
+                    player.AddScreenShake(GameConfig.ScreenShakeIntensity);
                 }
             }
 
@@ -145,9 +145,12 @@ namespace DarkArmsProto
                 enemy.Update(deltaTime, player.Position);
 
                 // Check if touching player
-                if (Vector3.Distance(enemy.Position, player.Position) < 1.5f)
+                if (
+                    Vector3.Distance(enemy.Position, player.Position)
+                    < GameConfig.EnemyCollisionRadius
+                )
                 {
-                    player.TakeDamage(10 * deltaTime);
+                    player.TakeDamage(GameConfig.EnemyTouchDamagePerSecond * deltaTime);
                 }
             }
 
@@ -217,8 +220,8 @@ namespace DarkArmsProto
 
         private void DrawWalls()
         {
-            float roomSize = 20f;
-            float wallHeight = 5f;
+            float roomSize = GameConfig.RoomSize;
+            float wallHeight = GameConfig.WallHeight;
             Color wallColor = new Color(50, 50, 50, 255);
 
             // North wall

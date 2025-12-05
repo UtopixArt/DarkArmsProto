@@ -14,7 +14,7 @@ namespace DarkArmsProto
         private Vector3 direction;
         private float speed;
         private float lifetime;
-        private float maxLifetime = 5f;
+        private float maxLifetime = GameConfig.ProjectileMaxLifetime;
         private Color color;
         private float size;
 
@@ -53,7 +53,7 @@ namespace DarkArmsProto
                 foreach (var enemy in enemies)
                 {
                     float dist = Vector3.Distance(Position, enemy.Position);
-                    if (dist < closestDist && dist < 15f)
+                    if (dist < closestDist && dist < GameConfig.HomingRange)
                     {
                         closestDist = dist;
                         closestEnemy = enemy;
@@ -66,7 +66,7 @@ namespace DarkArmsProto
                     toEnemy = Vector3.Normalize(toEnemy);
 
                     // Lerp direction toward enemy
-                    direction = Vector3.Lerp(direction, toEnemy, 0.1f);
+                    direction = Vector3.Lerp(direction, toEnemy, GameConfig.HomingStrength);
                     direction = Vector3.Normalize(direction);
                 }
             }

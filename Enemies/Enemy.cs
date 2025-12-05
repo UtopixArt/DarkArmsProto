@@ -24,18 +24,18 @@ namespace DarkArmsProto
             switch (type)
             {
                 case SoulType.Beast:
-                    maxHealth = 30f;
-                    speed = 3f;
+                    maxHealth = GameConfig.BeastEnemyHealth;
+                    speed = GameConfig.BeastEnemySpeed;
                     color = new Color(255, 136, 0, 255);
                     break;
                 case SoulType.Undead:
-                    maxHealth = 50f;
-                    speed = 2f;
+                    maxHealth = GameConfig.UndeadEnemyHealth;
+                    speed = GameConfig.UndeadEnemySpeed;
                     color = new Color(0, 255, 0, 255);
                     break;
                 case SoulType.Demon:
-                    maxHealth = 40f;
-                    speed = 2.5f;
+                    maxHealth = GameConfig.DemonEnemyHealth;
+                    speed = GameConfig.DemonEnemySpeed;
                     color = new Color(255, 0, 0, 255);
                     break;
             }
@@ -62,7 +62,7 @@ namespace DarkArmsProto
         public void TakeDamage(float damage)
         {
             health -= damage;
-            hitFlashTime = 0.1f;
+            hitFlashTime = GameConfig.HitFlashDuration;
         }
 
         public bool IsDead()
@@ -74,7 +74,7 @@ namespace DarkArmsProto
         {
             // Main body
             Color renderColor = hitFlashTime > 0 ? Color.White : color;
-            Raylib.DrawCubeV(Position + new Vector3(0, 0.75f, 0), size, color);
+            Raylib.DrawCubeV(Position + new Vector3(0, 0.75f, 0), size, renderColor);
 
             // Health bar
             float healthPercent = health / maxHealth;

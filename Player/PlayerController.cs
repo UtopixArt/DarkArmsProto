@@ -28,7 +28,7 @@ namespace DarkArmsProto
             camera.Position = startPosition;
             camera.Target = startPosition + new Vector3(0, 0, -1);
             camera.Up = new Vector3(0, 1, 0);
-            camera.FovY = 75f;
+            camera.FovY = GameConfig.CameraFOV;
             camera.Projection = CameraProjection.Perspective;
 
             yaw = 0f;
@@ -53,7 +53,7 @@ namespace DarkArmsProto
                     (float)(Random.Shared.NextDouble() - 0.5) * shakeIntensity,
                     0
                 );
-                shakeIntensity *= 0.9f;
+                shakeIntensity *= GameConfig.ScreenShakeDecay;
             }
             camera.Position += shakeOffset;
         }
@@ -97,7 +97,7 @@ namespace DarkArmsProto
             }
 
             // Keep player in bounds
-            float boundary = 9.5f;
+            float boundary = GameConfig.PlayerBoundary;
             Position = new Vector3(
                 Math.Clamp(Position.X, -boundary, boundary),
                 Position.Y,

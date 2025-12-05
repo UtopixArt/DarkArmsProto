@@ -22,7 +22,12 @@ namespace DarkArmsProto
         private float fireRate;
         private float lastShotTime;
         private int totalSouls;
-        private int[] requiredSouls = { 10, 25, 50 };
+        private int[] requiredSouls =
+        {
+            GameConfig.RequiredSoulsStage2,
+            GameConfig.RequiredSoulsStage3,
+            GameConfig.RequiredSoulsStage4,
+        };
         private bool canEvolve;
 
         public WeaponSystem(PlayerController player)
@@ -30,8 +35,8 @@ namespace DarkArmsProto
             this.player = player;
             WeaponName = "Flesh Pistol";
             EvolutionStage = 1;
-            damage = 20f;
-            fireRate = 3f; // Shots per second
+            damage = GameConfig.BaseDamage;
+            fireRate = GameConfig.BaseFireRate;
             lastShotTime = 0f;
             totalSouls = 0;
             canEvolve = false;
@@ -92,18 +97,18 @@ namespace DarkArmsProto
                 {
                     case SoulType.Beast:
                         newName = "Bone Revolver";
-                        damageMult = 2.0f;
-                        fireRateMult = 0.5f;
+                        damageMult = GameConfig.BoneRevolverDamageMult;
+                        fireRateMult = GameConfig.BoneRevolverFireRateMult;
                         break;
                     case SoulType.Undead:
                         newName = "Tendril Burst";
-                        damageMult = 1.3f;
-                        fireRateMult = 1.5f;
+                        damageMult = GameConfig.TendrilBurstDamageMult;
+                        fireRateMult = GameConfig.TendrilBurstFireRateMult;
                         break;
                     case SoulType.Demon:
                         newName = "Parasite Swarm";
-                        damageMult = 0.8f;
-                        fireRateMult = 2.0f;
+                        damageMult = GameConfig.ParasiteSwarmDamageMult;
+                        fireRateMult = GameConfig.ParasiteSwarmFireRateMult;
                         break;
                 }
             }
@@ -113,18 +118,18 @@ namespace DarkArmsProto
                 {
                     case SoulType.Beast:
                         newName = "Apex Predator";
-                        damageMult = 3.0f;
-                        fireRateMult = 0.7f;
+                        damageMult = GameConfig.ApexPredatorDamageMult;
+                        fireRateMult = GameConfig.ApexPredatorFireRateMult;
                         break;
                     case SoulType.Undead:
                         newName = "Necrotic Cannon";
-                        damageMult = 2.5f;
-                        fireRateMult = 1.2f;
+                        damageMult = GameConfig.NecroticCannonDamageMult;
+                        fireRateMult = GameConfig.NecroticCannonFireRateMult;
                         break;
                     case SoulType.Demon:
                         newName = "Inferno Beast";
-                        damageMult = 2.0f;
-                        fireRateMult = 1.8f;
+                        damageMult = GameConfig.InfernoBeastDamageMult;
+                        fireRateMult = GameConfig.InfernoBeastFireRateMult;
                         break;
                 }
             }
@@ -231,7 +236,7 @@ namespace DarkArmsProto
                             0.3f,
                             false,
                             false,
-                            true
+                            false
                         )
                     );
                     break;
