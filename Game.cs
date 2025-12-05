@@ -18,6 +18,7 @@ namespace DarkArmsProto
         private WeaponSystem weaponSystem = null!;
         private EnemySpawner enemySpawner = null!;
         private SoulManager soulManager = null!;
+        private RoomManager roomManager = null!;
         private List<Enemy> enemies;
         private List<Projectile> projectiles;
         private List<DamageNumber> damageNumbers;
@@ -46,14 +47,16 @@ namespace DarkArmsProto
             // Initialize enemy spawner
             enemySpawner = new EnemySpawner();
 
-            // Initialize damage numbers for display on hits
+            // Initialize damage numbers
             damageNumbers = new List<DamageNumber>();
 
-            // Spawn initial enemies
-            for (int i = 0; i < GameConfig.InitialEnemyCount; i++)
-            {
-                enemies.Add(enemySpawner.SpawnEnemy());
-            }
+            // Initialize room system
+            roomManager = new RoomManager();
+            roomManager.GenerateDungeon();
+            roomManager.InitializeRooms(enemySpawner);
+
+            // Get enemies from current room
+            enemies = roomManager.GetCurrentRoomEnemies();
         }
 
         public void Update(float deltaTime)
@@ -139,12 +142,13 @@ namespace DarkArmsProto
                 }
             }
 
-            // Update enemies
+            // Update room manager (handles enemies and transitions)
+            roomManager.Update(deltaTime, player.Position);
+            enemies = roomManager.GetCurrentRoomEnemies();
+
+            // Check if touching player
             foreach (var enemy in enemies)
             {
-                enemy.Update(deltaTime, player.Position);
-
-                // Check if touching player
                 if (
                     Vector3.Distance(enemy.Position, player.Position)
                     < GameConfig.EnemyCollisionRadius
@@ -176,17 +180,11 @@ namespace DarkArmsProto
             // 3D rendering
             Raylib.BeginMode3D(player.GetCamera());
 
-            // Draw floor
-            Raylib.DrawPlane(new Vector3(0, 0, 0), new Vector2(40, 40), new Color(30, 30, 30, 255));
+            // 3D rendering
+            Raylib.BeginMode3D(player.GetCamera());
 
-            // Draw walls
-            DrawWalls();
-
-            // Draw enemies
-            foreach (var enemy in enemies)
-            {
-                enemy.Render();
-            }
+            // Draw rooms (floor, walls, doors)
+            roomManager.Render();
 
             // Draw projectiles
             foreach (var projectile in projectiles)
@@ -216,38 +214,6 @@ namespace DarkArmsProto
             RenderUI();
 
             Raylib.EndDrawing();
-        }
-
-        private void DrawWalls()
-        {
-            float roomSize = GameConfig.RoomSize;
-            float wallHeight = GameConfig.WallHeight;
-            Color wallColor = new Color(50, 50, 50, 255);
-
-            // North wall
-            Raylib.DrawCubeV(
-                new Vector3(0, wallHeight / 2, -roomSize / 2),
-                new Vector3(roomSize, wallHeight, 0.5f),
-                wallColor
-            );
-            // South wall
-            Raylib.DrawCubeV(
-                new Vector3(0, wallHeight / 2, roomSize / 2),
-                new Vector3(roomSize, wallHeight, 0.5f),
-                wallColor
-            );
-            // West wall
-            Raylib.DrawCubeV(
-                new Vector3(-roomSize / 2, wallHeight / 2, 0),
-                new Vector3(0.5f, wallHeight, roomSize),
-                wallColor
-            );
-            // East wall
-            Raylib.DrawCubeV(
-                new Vector3(roomSize / 2, wallHeight / 2, 0),
-                new Vector3(0.5f, wallHeight, roomSize),
-                wallColor
-            );
         }
 
         private void RenderUI()

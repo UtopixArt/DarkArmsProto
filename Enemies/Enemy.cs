@@ -44,6 +44,11 @@ namespace DarkArmsProto
             size = new Vector3(1f, 1.5f, 1f);
         }
 
+        public void SetPosition(Vector3 newPosition)
+        {
+            Position = newPosition;
+        }
+
         public void Update(float deltaTime, Vector3 playerPosition)
         {
             if (hitFlashTime > 0)
