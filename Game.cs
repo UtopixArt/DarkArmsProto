@@ -1,8 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Numerics;
+using DarkArmsProto.Audio;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
+using DarkArmsProto.Systems;
+using DarkArmsProto.VFX;
 using DarkArmsProto.World;
 using Raylib_cs;
 
@@ -10,40 +12,32 @@ namespace DarkArmsProto
 {
     public class Game
     {
-        private struct DamageNumber
-        {
-            public Vector3 Position;
-            public float Damage;
-            public float Lifetime;
-        }
-
         // Core systems
         private GameObject player = null!;
-        private WeaponSystem weaponSystem = null!;
         private EnemySpawner enemySpawner = null!;
         private SoulManager soulManager = null!;
         private RoomManager roomManager = null!;
-        private List<GameObject> enemies;
-        private List<GameObject> projectiles;
-        private List<DamageNumber> damageNumbers;
+        private ParticleManager particleManager = null!;
+        private LightManager lightManager = null!;
+
+        // New refactored systems
+        private CombatSystem combatSystem = null!;
+        private ProjectileSystem projectileSystem = null!;
+        private GameUI gameUI = null!;
 
         // Game state
-        private int kills = 0;
         private int currentRoom = 1;
         private bool showColliderDebug = true;
 
         public static Camera3D GameCamera;
         public static Texture2D WhiteTexture;
 
-        public Game()
-        {
-            enemies = new List<GameObject>();
-            projectiles = new List<GameObject>();
-            damageNumbers = new List<DamageNumber>();
-        }
-
         public void Initialize()
         {
+            // Initialize audio system
+            AudioManager.Instance.Initialize();
+            AudioManager.Instance.SetMasterVolume(0.5f);
+
             // Create a 1x1 white texture for billboards
             Image img = Raylib.GenImageColor(1, 1, Color.White);
             WhiteTexture = Raylib.LoadTextureFromImage(img);
@@ -54,44 +48,57 @@ namespace DarkArmsProto
             roomManager.GenerateDungeon();
 
             // Initialize player at start room position
-            // Add height offset (1.6f) to avoid spawning in floor
             Vector3 startPos = roomManager.CurrentRoom.WorldPosition + new Vector3(0, 1.6f, 0);
-
             player = new GameObject(startPos);
 
             var inputComp = new PlayerInputComponent();
             inputComp.RoomCenter = roomManager.CurrentRoom.WorldPosition;
+            inputComp.WallColliders = roomManager.CurrentRoom.WallColliders;
             player.AddComponent(inputComp);
 
             var cameraComp = new CameraComponent();
             player.AddComponent(cameraComp);
 
             var healthComp = new HealthComponent();
-            healthComp.MaxHealth = 100;
-            healthComp.CurrentHealth = 100;
+            healthComp.MaxHealth = GameConfig.PlayerMaxHealth;
+            healthComp.CurrentHealth = GameConfig.PlayerMaxHealth;
             player.AddComponent(healthComp);
 
             var colliderComp = new ColliderComponent();
-            colliderComp.Size = new Vector3(0.4f, 0.8f, 0.4f); // Box collider for player (slightly smaller than visual)
+            colliderComp.Size = new Vector3(
+                GameConfig.PlayerColliderWidth,
+                GameConfig.PlayerColliderHeight,
+                GameConfig.PlayerColliderDepth
+            );
             player.AddComponent(colliderComp);
 
-            // Initialize weapon system
-            weaponSystem = new WeaponSystem(player);
+            var screenShake = new ScreenShakeComponent();
+            player.AddComponent(screenShake);
 
-            // Initialize soul manager
-            soulManager = new SoulManager(weaponSystem);
+            var weaponComp = new WeaponComponent();
+            player.AddComponent(weaponComp);
 
-            // Initialize enemy spawner
+            var weaponRender = new WeaponRenderComponent();
+            player.AddComponent(weaponRender);
+
+            var weaponUI = new WeaponUIComponent();
+            player.AddComponent(weaponUI);
+
+            // Initialize managers
+            particleManager = new ParticleManager();
+            lightManager = new LightManager();
+            lightManager.Initialize();
+            soulManager = new SoulManager(weaponComp);
+            soulManager.SetParticleManager(particleManager);
             enemySpawner = new EnemySpawner();
 
-            // Initialize damage numbers
-            damageNumbers = new List<DamageNumber>();
+            // Initialize new systems
+            combatSystem = new CombatSystem(player, soulManager, particleManager, lightManager);
+            projectileSystem = new ProjectileSystem(player, particleManager, lightManager);
+            gameUI = new GameUI(player, roomManager);
 
             // Initialize rooms with enemies
             roomManager.InitializeRooms(enemySpawner);
-
-            // Get enemies from current room
-            enemies = roomManager.GetCurrentRoomEnemies();
         }
 
         public void Update(float deltaTime)
@@ -112,158 +119,32 @@ namespace DarkArmsProto
                 GameCamera = camComp.Camera;
             }
 
-            // Update static enemies list for projectiles
-            ProjectileComponent.Enemies = enemies;
+            // Update enemies list for projectiles
+            var enemies = roomManager.GetCurrentRoomEnemies();
+            projectileSystem.SetEnemies(enemies);
 
-            // Handle shooting
-            if (Raylib.IsMouseButtonPressed(MouseButton.Left))
-            {
-                var cameraComp = player.GetComponent<CameraComponent>();
-                if (cameraComp != null)
-                {
-                    var newProjectiles = weaponSystem.Shoot(cameraComp.Camera);
-                    if (newProjectiles.Count > 0)
-                    {
-                        projectiles.AddRange(newProjectiles);
-                        // Screen shake logic would go here if we had a ScreenShakeComponent
-                    }
-                }
-            }
-
-            // Update weapon system
-            weaponSystem.Update(deltaTime);
+            // Handle shooting via ProjectileSystem
+            projectileSystem.HandleShooting();
 
             // Update projectiles
-            for (int i = projectiles.Count - 1; i >= 0; i--)
-            {
-                var proj = projectiles[i];
-                proj.Update(deltaTime);
+            projectileSystem.Update(deltaTime);
 
-                var projComp = proj.GetComponent<ProjectileComponent>();
-                if (projComp == null || !proj.IsActive)
-                {
-                    projectiles.RemoveAt(i);
-                    continue;
-                }
-
-                // Check collision with enemies using box colliders
-                bool hit = false;
-                for (int j = enemies.Count - 1; j >= 0; j--)
-                {
-                    var enemy = enemies[j];
-                    var enemyCollider = enemy.GetComponent<ColliderComponent>();
-
-                    // Check collision using box collider if available, otherwise fallback to distance
-                    bool collision = false;
-                    if (enemyCollider != null)
-                    {
-                        collision = enemyCollider.CheckPointCollision(proj.Position);
-                    }
-                    else
-                    {
-                        collision = Vector3.Distance(proj.Position, enemy.Position) < 1.0f;
-                    }
-
-                    if (collision)
-                    {
-                        var health = enemy.GetComponent<HealthComponent>();
-                        if (health != null)
-                        {
-                            health.TakeDamage(projComp.Damage);
-
-                            damageNumbers.Add(
-                                new DamageNumber
-                                {
-                                    Position = enemy.Position,
-                                    Damage = projComp.Damage,
-                                    Lifetime = 1f,
-                                }
-                            );
-
-                            // Apply special effects
-                            if (projComp.Lifesteal)
-                            {
-                                var playerHealth = player.GetComponent<HealthComponent>();
-                                if (playerHealth != null)
-                                {
-                                    playerHealth.Heal(projComp.Damage * 0.3f);
-                                }
-                            }
-
-                            // Check if enemy died
-                            if (health.IsDead)
-                            {
-                                var enemyComp = enemy.GetComponent<EnemyComponent>();
-                                SoulType soulType =
-                                    enemyComp != null ? enemyComp.Type : SoulType.Undead;
-
-                                soulManager.SpawnSoul(enemy.Position, soulType);
-
-                                enemies.RemoveAt(j);
-                                kills++;
-                            }
-                        }
-
-                        if (!projComp.Piercing)
-                        {
-                            hit = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Remove projectile if hit
-                if (hit)
-                {
-                    projectiles.RemoveAt(i);
-                }
-            }
+            // Process combat (projectile hits, enemy deaths, player damage)
+            combatSystem.ProcessProjectileCollisions(
+                projectileSystem.Projectiles,
+                enemies,
+                deltaTime
+            );
+            combatSystem.ProcessEnemyPlayerCollisions(enemies, deltaTime);
+            combatSystem.UpdateDamageNumbers(deltaTime);
 
             // Update room manager (handles enemies and transitions)
             roomManager.Update(deltaTime, player);
-            enemies = roomManager.GetCurrentRoomEnemies();
 
-            // Check if touching player using box colliders
-            var playerCollider = player.GetComponent<ColliderComponent>();
-            foreach (var enemy in enemies)
-            {
-                bool collision = false;
-
-                // Use box colliders if both have them
-                var enemyCollider = enemy.GetComponent<ColliderComponent>();
-                if (playerCollider != null && enemyCollider != null)
-                {
-                    collision = playerCollider.CheckCollision(enemyCollider);
-                }
-                else
-                {
-                    // Fallback to distance check
-                    collision = Vector3.Distance(enemy.Position, player.Position)
-                        < GameConfig.EnemyCollisionRadius;
-                }
-
-                if (collision)
-                {
-                    var playerHealth = player.GetComponent<HealthComponent>();
-                    if (playerHealth != null)
-                    {
-                        playerHealth.TakeDamage(GameConfig.EnemyTouchDamagePerSecond * deltaTime);
-                    }
-                }
-            }
-
-            for (int i = damageNumbers.Count - 1; i >= 0; i--)
-            {
-                var dn = damageNumbers[i];
-                dn.Lifetime -= deltaTime;
-                dn.Position += new Vector3(0, deltaTime * 2, 0);
-                damageNumbers[i] = dn;
-                if (dn.Lifetime <= 0)
-                    damageNumbers.RemoveAt(i);
-            }
-
-            // Update souls
+            // Update souls and particles
             soulManager.Update(deltaTime, player.Position);
+            particleManager.Update(deltaTime);
+            lightManager.Update(deltaTime);
         }
 
         public void Render()
@@ -274,130 +155,68 @@ namespace DarkArmsProto
             var cameraComp = player.GetComponent<CameraComponent>();
             if (cameraComp != null)
             {
-                // 3D rendering
-                Raylib.BeginMode3D(cameraComp.Camera);
-
-                // Draw rooms (floor, walls, doors)
-                roomManager.Render();
-
-                // Draw projectiles
-                foreach (var projectile in projectiles)
+                // Apply screen shake to camera
+                var screenShake = player.GetComponent<ScreenShakeComponent>();
+                Camera3D shakyCam = cameraComp.Camera;
+                if (screenShake != null)
                 {
-                    projectile.Render();
+                    shakyCam.Position += screenShake.ShakeOffset;
+                    shakyCam.Target += screenShake.ShakeOffset;
                 }
 
-                // Draw souls
+                // Update lighting shader with camera position
+                lightManager.UpdateShader(shakyCam);
+
+                // 3D rendering
+                Raylib.BeginMode3D(shakyCam);
+
+                // Render lit objects
+                Raylib.BeginShaderMode(lightManager.LightingShader);
+                roomManager.Render();
+                Raylib.EndShaderMode();
+
+                // Render unlit/emissive objects
+                projectileSystem.Render();
                 soulManager.Render();
+                particleManager.Render();
+                lightManager.Render(); // Render dynamic lights (billboards)
+
+                // Render Weapon
+                var weaponRender = player.GetComponent<WeaponRenderComponent>();
+                weaponRender?.Render();
 
                 // Draw collider debug wireframes
                 if (showColliderDebug)
                 {
-                    // Player collider
                     var playerCollider = player.GetComponent<ColliderComponent>();
-                    if (playerCollider != null)
-                    {
-                        playerCollider.Render();
-                    }
+                    playerCollider?.Render();
 
-                    // Enemy colliders
+                    var enemies = roomManager.GetCurrentRoomEnemies();
                     foreach (var enemy in enemies)
                     {
-                        var enemyCollider = enemy.GetComponent<ColliderComponent>();
-                        if (enemyCollider != null)
-                        {
-                            enemyCollider.Render();
-                        }
+                        enemy.GetComponent<ColliderComponent>()?.Render();
                     }
 
-                    // Projectile colliders
-                    foreach (var projectile in projectiles)
-                    {
-                        var projCollider = projectile.GetComponent<ColliderComponent>();
-                        if (projCollider != null)
-                        {
-                            projCollider.Render();
-                        }
-                    }
+                    projectileSystem.RenderColliderDebug();
                 }
 
                 Raylib.EndMode3D();
 
-                foreach (var dn in damageNumbers)
-                {
-                    var screenPos = Raylib.GetWorldToScreen(dn.Position, cameraComp.Camera);
-                    byte alpha = (byte)(dn.Lifetime * 255);
-                    Raylib.DrawText(
-                        ((int)dn.Damage).ToString(),
-                        (int)screenPos.X,
-                        (int)screenPos.Y,
-                        60,
-                        new Color(Color.Yellow.R, Color.Yellow.G, Color.Yellow.B, alpha)
-                    );
-                }
+                // Render damage numbers
+                gameUI.RenderDamageNumbers(combatSystem.DamageNumbers, cameraComp.Camera);
             }
 
             // 2D UI
-            RenderUI();
-
-            // Draw health bars (after 3D mode)
-            foreach (var enemy in enemies)
-            {
-                var healthBar = enemy.GetComponent<HealthBarComponent>();
-                if (healthBar != null)
-                {
-                    healthBar.DrawUI();
-                }
-            }
+            gameUI.RenderUI(combatSystem.Kills, showColliderDebug);
+            gameUI.RenderEnemyHealthBars(roomManager.GetCurrentRoomEnemies());
 
             Raylib.EndDrawing();
         }
 
-        private void RenderUI()
-        {
-            var healthComp = player.GetComponent<HealthComponent>();
-            float currentHealth = healthComp != null ? healthComp.CurrentHealth : 0;
-
-            // Stats panel
-            Raylib.DrawRectangle(10, 10, 200, 100, new Color(0, 0, 0, 200));
-            Raylib.DrawText($"HP: {(int)currentHealth}/100", 20, 20, 20, Color.Green);
-            Raylib.DrawText($"Kills: {kills}", 20, 45, 20, Color.White);
-            Raylib.DrawText($"Room: {currentRoom}", 20, 70, 20, Color.White);
-
-            // Weapon info
-            weaponSystem.RenderUI();
-
-            // Crosshair
-            int centerX = Raylib.GetScreenWidth() / 2;
-            int centerY = Raylib.GetScreenHeight() / 2;
-            Raylib.DrawLine(centerX - 10, centerY, centerX + 10, centerY, Color.White);
-            Raylib.DrawLine(centerX, centerY - 10, centerX, centerY + 10, Color.White);
-
-            // Debug indicator
-            if (showColliderDebug)
-            {
-                Raylib.DrawText(
-                    "[F3] Colliders: ON",
-                    Raylib.GetScreenWidth() - 170,
-                    10,
-                    16,
-                    Color.Green
-                );
-            }
-            else
-            {
-                Raylib.DrawText(
-                    "[F3] Colliders: OFF",
-                    Raylib.GetScreenWidth() - 170,
-                    10,
-                    16,
-                    Color.Gray
-                );
-            }
-        }
-
         public void Cleanup()
         {
-            // Cleanup resources if needed
+            AudioManager.Instance.Cleanup();
+            lightManager.Cleanup();
         }
     }
 }

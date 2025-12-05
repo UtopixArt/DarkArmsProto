@@ -12,7 +12,7 @@ namespace DarkArmsProto.World
 
         private const float DoorWidth = 4f;
         private const float DoorHeight = 3f;
-        private const float TriggerRadius = 2f;
+        private const float TriggerRadius = 3.5f; // Increased for easier door activation
 
         public Door(Vector3 position, Direction direction, Room parentRoom)
         {

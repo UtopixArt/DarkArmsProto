@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using DarkArmsProto.Components; // Nécessaire pour HealthComponent et ChaseAIComponent
 using DarkArmsProto.Core;
+using Raylib_cs;
 
 namespace DarkArmsProto.World
 {
@@ -38,6 +39,9 @@ namespace DarkArmsProto.World
         public List<GameObject> Enemies { get; private set; }
         public int InitialEnemyCount { get; private set; }
 
+        // Wall colliders for physics
+        public List<ColliderComponent> WallColliders { get; private set; }
+
         private const float RoomWorldSize = 40f;
 
         public Room(Vector2 gridPosition, RoomType type)
@@ -65,6 +69,64 @@ namespace DarkArmsProto.World
             Doors = new Dictionary<Direction, Door>();
             Enemies = new List<GameObject>();
             InitialEnemyCount = 0;
+            WallColliders = new List<ColliderComponent>();
+
+            CreateWallColliders();
+        }
+
+        private void CreateWallColliders()
+        {
+            float halfSize = GameConfig.RoomSize / 2f;
+            float wallHeight = GameConfig.WallHeight;
+            float wallThickness = 0.5f;
+
+            // North wall
+            var northWall = new GameObject(
+                WorldPosition + new Vector3(0, wallHeight / 2f, -halfSize)
+            );
+            var northCollider = new ColliderComponent
+            {
+                Size = new Vector3(halfSize, wallHeight / 2f, wallThickness / 2f),
+                ShowDebug = false,
+            };
+            northWall.AddComponent(northCollider);
+            WallColliders.Add(northCollider);
+
+            // South wall
+            var southWall = new GameObject(
+                WorldPosition + new Vector3(0, wallHeight / 2f, halfSize)
+            );
+            var southCollider = new ColliderComponent
+            {
+                Size = new Vector3(halfSize, wallHeight / 2f, wallThickness / 2f),
+                ShowDebug = false,
+            };
+            southWall.AddComponent(southCollider);
+            WallColliders.Add(southCollider);
+
+            // East wall
+            var eastWall = new GameObject(
+                WorldPosition + new Vector3(halfSize, wallHeight / 2f, 0)
+            );
+            var eastCollider = new ColliderComponent
+            {
+                Size = new Vector3(wallThickness / 2f, wallHeight / 2f, halfSize),
+                ShowDebug = false,
+            };
+            eastWall.AddComponent(eastCollider);
+            WallColliders.Add(eastCollider);
+
+            // West wall
+            var westWall = new GameObject(
+                WorldPosition + new Vector3(-halfSize, wallHeight / 2f, 0)
+            );
+            var westCollider = new ColliderComponent
+            {
+                Size = new Vector3(wallThickness / 2f, wallHeight / 2f, halfSize),
+                ShowDebug = false,
+            };
+            westWall.AddComponent(westCollider);
+            WallColliders.Add(westCollider);
         }
 
         public void AddConnection(Direction direction, Room otherRoom)
@@ -116,11 +178,21 @@ namespace DarkArmsProto.World
                 Vector3 spawnPos = WorldPosition + new Vector3(offsetX, 0, offsetZ);
 
                 // 2. Choisir un type d'ennemi
-                SoulType soulType = SoulType.Undead;
+                SoulType soulType;
                 if (Type == RoomType.Boss)
+                {
                     soulType = SoulType.Demon;
-                else if (rng.NextDouble() > 0.7)
-                    soulType = SoulType.Beast;
+                }
+                else
+                {
+                    double roll = rng.NextDouble();
+                    if (roll < 0.15) // 15% Beast
+                        soulType = SoulType.Beast;
+                    else if (roll < 0.60) // 45% Demon
+                        soulType = SoulType.Demon;
+                    else // 40% Undead
+                        soulType = SoulType.Undead;
+                }
 
                 // 3. Spawner l'ennemi (GameObject)
                 var enemy = spawner.SpawnEnemy(spawnPos, soulType);

@@ -10,11 +10,16 @@ namespace DarkArmsProto
         public const float PlayerMoveSpeed = 10f;
         public const float PlayerMouseSensitivity = 0.003f;
         public const float PlayerMaxHealth = 100f;
-        public const float PlayerBoundary = 9f;
+        public const float PlayerBoundary = 13.5f; // Updated for larger rooms (RoomSize 30)
+
+        // Player collider settings
+        public const float PlayerColliderWidth = 0.4f;
+        public const float PlayerColliderHeight = 0.8f;
+        public const float PlayerColliderDepth = 0.4f;
 
         // === SCREEN EFFECTS ===
-        public const float ScreenShakeIntensity = 0.05f;
-        public const float ScreenShakeDecay = 0.9f;
+        public const float ScreenShakeOnShoot = 0.025f;
+        public const float ScreenShakeOnKill = 0.3f;
 
         // === WEAPON SETTINGS ===
         public const float BaseDamage = 20f;
@@ -67,18 +72,33 @@ namespace DarkArmsProto
         public const float FleshPistolSize = 0.3f;
 
         // === ENEMY SETTINGS ===
-        public const float BeastEnemyHealth = 30f;
-        public const float BeastEnemySpeed = 3f;
+        public const float BeastEnemyHealth = 50f; // Augmenté de 30 à 50
+        public const float BeastEnemySpeed = 4.5f; // Augmenté de 3 à 4.5
 
-        public const float UndeadEnemyHealth = 50f;
-        public const float UndeadEnemySpeed = 2f;
+        public const float UndeadEnemyHealth = 80f; // Augmenté de 50 à 80
+        public const float UndeadEnemySpeed = 3f; // Augmenté de 2 à 3
 
-        public const float DemonEnemyHealth = 40f;
-        public const float DemonEnemySpeed = 2.5f;
+        public const float DemonEnemyHealth = 65f; // Augmenté de 40 à 65
+        public const float DemonEnemySpeed = 4f; // Augmenté de 2.5 à 4
 
-        public const float EnemyTouchDamagePerSecond = 10f;
+        public const float EnemyTouchDamagePerSecond = 15f; // Augmenté de 10 à 15
         public const float EnemyCollisionRadius = 1.5f;
         public const float HitFlashDuration = 0.1f;
+
+        // Enemy visual settings
+        public const float EnemyMeshWidth = 1.5f;
+        public const float EnemyMeshHeight = 4.5f;
+        public const float EnemyMeshDepth = 1.5f;
+
+        // Enemy collider (half-extents of mesh)
+        public const float EnemyColliderWidth = 0.75f; // MeshWidth / 2
+        public const float EnemyColliderHeight = 2.25f; // MeshHeight / 2
+        public const float EnemyColliderDepth = 0.75f; // MeshDepth / 2
+
+        // Enemy health bar settings
+        public const float EnemyHealthBarOffsetY = 2.5f;
+        public const float EnemyHealthBarWidth = 2f;
+        public const float EnemyHealthBarHeight = 0.3f;
 
         // === SOUL SETTINGS ===
         public const float SoulMagnetRadius = 3f;
@@ -87,21 +107,12 @@ namespace DarkArmsProto
         public const float SoulMoveSpeed = 10f; // When magnetized
 
         // === ENEMY SPAWNING ===
-        public const int InitialEnemyCount = 5;
-        public const float MinSpawnDistance = 8f;
-        public const float MaxSpawnDistance = 13f;
-
-        // === VISUAL SETTINGS ===
-        public const float DamageNumberLifetime = 1f;
-        public const float DamageNumberRiseSpeed = 2f;
-        public const int DamageNumberFontSize = 60;
+        public const int MinEnemiesPerRoom = 5; // Minimum enemies in a normal room
+        public const int MaxEnemiesPerRoom = 12; // Maximum enemies in a normal room
+        public const int BossRoomEnemyCount = 1; // Boss room enemy count
 
         // === ROOM SETTINGS ===
-        public const float RoomSize = 20f;
+        public const float RoomSize = 30f;
         public const float WallHeight = 5f;
-
-        // === CAMERA SETTINGS ===
-        public const float CameraFOV = 75f;
-        public const int TargetFPS = 60;
     }
 }

@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Numerics;
+using DarkArmsProto.Audio;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
+using DarkArmsProto.VFX;
 using Raylib_cs;
 
 namespace DarkArmsProto
@@ -9,12 +11,18 @@ namespace DarkArmsProto
     public class SoulManager
     {
         private List<GameObject> souls;
-        private WeaponSystem weaponSystem;
+        private WeaponComponent weaponComponent;
+        private ParticleManager? particleManager;
 
-        public SoulManager(WeaponSystem weaponSystem)
+        public SoulManager(WeaponComponent weaponComponent)
         {
             souls = new List<GameObject>();
-            this.weaponSystem = weaponSystem;
+            this.weaponComponent = weaponComponent;
+        }
+
+        public void SetParticleManager(ParticleManager pm)
+        {
+            particleManager = pm;
         }
 
         public void SpawnSoul(Vector3 position, SoulType type)
@@ -51,8 +59,19 @@ namespace DarkArmsProto
                 {
                     if (soulComp.CheckCollection(playerPosition, deltaTime))
                     {
+                        // Play soul collect sound
+                        AudioManager.Instance.PlaySound(SoundType.SoulCollect, 0.3f);
+
+                        // Spawn collection particles
+                        if (particleManager != null)
+                        {
+                            var meshComp = soul.GetComponent<MeshRendererComponent>();
+                            Color soulColor = meshComp != null ? meshComp.Color : Color.White;
+                            particleManager.SpawnSoulCollectEffect(soul.Position, soulColor);
+                        }
+
                         // Feed soul to weapon
-                        weaponSystem.FeedSoul(soulComp.Type);
+                        weaponComponent.FeedSoul(soulComp.Type);
                         souls.RemoveAt(i);
                     }
                 }

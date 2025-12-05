@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using DarkArmsProto.Core;
 using Raylib_cs;
@@ -12,6 +13,7 @@ namespace DarkArmsProto.Components
 
         public Vector3 RoomCenter { get; set; }
         public float Boundary { get; set; } = 9f;
+        public List<ColliderComponent>? WallColliders { get; set; }
 
         private float yaw;
         private float pitch;
@@ -59,14 +61,91 @@ namespace DarkArmsProto.Components
             if (moveDirection != Vector3.Zero)
             {
                 moveDirection = Vector3.Normalize(moveDirection);
-                Owner.Position += moveDirection * MoveSpeed * deltaTime;
-            }
+                Vector3 newPosition = Owner.Position + moveDirection * MoveSpeed * deltaTime;
 
-            Owner.Position = new Vector3(
-                Math.Clamp(Owner.Position.X, RoomCenter.X - Boundary, RoomCenter.X + Boundary),
-                Owner.Position.Y,
-                Math.Clamp(Owner.Position.Z, RoomCenter.Z - Boundary, RoomCenter.Z + Boundary)
-            );
+                // Check collision with walls using proper AABB collision
+                var playerCollider = Owner.GetComponent<ColliderComponent>();
+                if (playerCollider != null && WallColliders != null)
+                {
+                    Vector3 originalPosition = Owner.Position;
+                    Owner.Position = newPosition;
+
+                    // Check if new position collides with any wall
+                    bool collided = false;
+                    foreach (var wall in WallColliders)
+                    {
+                        if (wall != null && playerCollider.CheckCollision(wall))
+                        {
+                            collided = true;
+                            break;
+                        }
+                    }
+
+                    // If collision detected, try sliding along walls
+                    if (collided)
+                    {
+                        Owner.Position = originalPosition;
+
+                        // Try X-axis only movement
+                        Vector3 xOnlyMove =
+                            originalPosition
+                            + new Vector3(moveDirection.X * MoveSpeed * deltaTime, 0, 0);
+                        Owner.Position = xOnlyMove;
+                        bool xCollides = false;
+                        foreach (var wall in WallColliders)
+                        {
+                            if (wall != null && playerCollider.CheckCollision(wall))
+                            {
+                                xCollides = true;
+                                break;
+                            }
+                        }
+
+                        if (xCollides)
+                        {
+                            // Try Z-axis only movement
+                            Owner.Position = originalPosition;
+                            Vector3 zOnlyMove =
+                                originalPosition
+                                + new Vector3(0, 0, moveDirection.Z * MoveSpeed * deltaTime);
+                            Owner.Position = zOnlyMove;
+                            bool zCollides = false;
+                            foreach (var wall in WallColliders)
+                            {
+                                if (wall != null && playerCollider.CheckCollision(wall))
+                                {
+                                    zCollides = true;
+                                    break;
+                                }
+                            }
+
+                            // If both axes collide, stay at original position
+                            if (zCollides)
+                            {
+                                Owner.Position = originalPosition;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback to simple boundary clamp if no colliders
+                    Owner.Position = newPosition;
+                    Owner.Position = new Vector3(
+                        Math.Clamp(
+                            Owner.Position.X,
+                            RoomCenter.X - Boundary,
+                            RoomCenter.X + Boundary
+                        ),
+                        Owner.Position.Y,
+                        Math.Clamp(
+                            Owner.Position.Z,
+                            RoomCenter.Z - Boundary,
+                            RoomCenter.Z + Boundary
+                        )
+                    );
+                }
+            }
         }
 
         public Vector3 GetLookDirection()

@@ -14,6 +14,8 @@ namespace DarkArmsProto.World
 
         public Room CurrentRoom => currentRoom!;
 
+        public Dictionary<Vector2, Room> GetAllRooms() => rooms;
+
         public RoomManager()
         {
             rooms = new Dictionary<Vector2, Room>();
@@ -22,13 +24,13 @@ namespace DarkArmsProto.World
 
         public void GenerateDungeon()
         {
-            // Simple 3x3 grid for now
-            // Layout:
-            // [ ][ ][ ]
-            // [ ][S][ ]
-            // [ ][ ][ ]
+            // Larger dungeon grid
+            // Layout: Procédural, jusqu'à 15 salles
+            // [ ][ ][ ][ ][ ]
+            // [ ][ ][S][ ][ ]
+            // [ ][ ][ ][ ][ ]
 
-            Vector2 startPos = new Vector2(1, 1); // Center
+            Vector2 startPos = new Vector2(2, 2); // Center
 
             // Create starting room
             var startRoom = new Room(startPos, RoomType.Start);
@@ -36,8 +38,8 @@ namespace DarkArmsProto.World
             currentRoom = startRoom;
             currentRoom.OnEnter();
 
-            // Generate connected rooms
-            GenerateRoomsRecursive(startRoom, 0, 5); // Max 5 rooms for now
+            // Generate connected rooms - Increased to 15 rooms max
+            GenerateRoomsRecursive(startRoom, 0, 15);
 
             // Connect rooms with doors
             ConnectRooms();
@@ -45,7 +47,7 @@ namespace DarkArmsProto.World
 
         private void GenerateRoomsRecursive(Room parentRoom, int depth, int maxRooms)
         {
-            if (rooms.Count >= maxRooms || depth > 3)
+            if (rooms.Count >= maxRooms || depth > 5)
                 return;
 
             Vector2 parentPos = parentRoom.GridPosition;
@@ -72,8 +74,8 @@ namespace DarkArmsProto.World
                 if (rooms.ContainsKey(newPos))
                     continue;
 
-                // 60% chance to create a room
-                if (random.NextDouble() > 0.6)
+                // 75% chance to create a room (increased density)
+                if (random.NextDouble() > 0.75)
                     continue;
 
                 // Determine room type
@@ -152,7 +154,10 @@ namespace DarkArmsProto.World
             )
                 return;
 
-            int enemyCount = room.Type == RoomType.Boss ? 1 : random.Next(3, 7);
+            int enemyCount =
+                room.Type == RoomType.Boss
+                    ? GameConfig.BossRoomEnemyCount
+                    : random.Next(GameConfig.MinEnemiesPerRoom, GameConfig.MaxEnemiesPerRoom + 1);
             room.SpawnEnemies(spawner, enemyCount);
         }
 
@@ -243,6 +248,7 @@ namespace DarkArmsProto.World
             if (inputComp != null)
             {
                 inputComp.RoomCenter = currentRoom.WorldPosition;
+                inputComp.WallColliders = currentRoom.WallColliders;
             }
         }
 

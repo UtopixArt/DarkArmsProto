@@ -6,10 +6,16 @@ namespace DarkArmsProto.Components
 {
     public class HealthBarComponent : Component
     {
-        public Vector3 Offset { get; set; } = new Vector3(0, 2.0f, 0);
-        public Vector2 Size { get; set; } = new Vector2(1.0f, 0.1f);
+        public Vector3 Offset { get; set; } = new Vector3(0, 3.5f, 0);
+        public Vector2 Size { get; set; } = new Vector2(1.5f, 0.1f);
         public Color BackgroundColor { get; set; } = Color.Gray;
         public Color ForegroundColor { get; set; } = Color.Red;
+
+        public HealthBarComponent(Vector3 offset, Vector2 size)
+        {
+            Offset = offset;
+            Size = size;
+        }
 
         public override void Render()
         {
