@@ -35,10 +35,10 @@ namespace DarkArmsProto
             pitch = 0f;
         }
 
-        public void Update(float deltaTime)
+        public void Update(float deltaTime, Vector3 roomCenter)
         {
             HandleMouseLook();
-            HandleMovement(deltaTime);
+            HandleMovement(deltaTime, roomCenter);
             UpdateCamera();
 
             ShakeEffect();
@@ -74,7 +74,7 @@ namespace DarkArmsProto
             pitch = Math.Clamp(pitch, -MathF.PI / 2 + 0.1f, MathF.PI / 2 - 0.1f);
         }
 
-        private void HandleMovement(float deltaTime)
+        private void HandleMovement(float deltaTime, Vector3 roomCenter)
         {
             Vector3 forward = GetForwardVector();
             Vector3 right = GetRightVector();
@@ -96,12 +96,12 @@ namespace DarkArmsProto
                 Position += moveDirection * moveSpeed * deltaTime;
             }
 
-            // Keep player in bounds
+            // Keep player in bounds relative to room center
             float boundary = GameConfig.PlayerBoundary;
             Position = new Vector3(
-                Math.Clamp(Position.X, -boundary, boundary),
+                Math.Clamp(Position.X, roomCenter.X - boundary, roomCenter.X + boundary),
                 Position.Y,
-                Math.Clamp(Position.Z, -boundary, boundary)
+                Math.Clamp(Position.Z, roomCenter.Z - boundary, roomCenter.Z + boundary)
             );
         }
 
@@ -150,6 +150,12 @@ namespace DarkArmsProto
         public void Heal(float amount)
         {
             Health = Math.Min(maxHealth, Health + amount);
+        }
+
+        public void Teleport(Vector3 newPosition)
+        {
+            Position = newPosition;
+            UpdateCamera();
         }
     }
 }

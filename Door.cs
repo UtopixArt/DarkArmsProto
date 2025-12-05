@@ -76,23 +76,70 @@ namespace DarkArmsProto
             }
             else
             {
-                // Render open door (green glow)
-                Color glowColor = new Color(50, 255, 50, 100);
+                // Render open door (green portal effect)
+                // Make it pulse
+                float pulse = (float)Math.Sin(Raylib.GetTime() * 3.0f) * 0.2f + 0.8f;
+                Color glowColor = new Color(50, 255, 50, (int)(100 * pulse));
+                Color frameColor = new Color(100, 255, 100, 255);
 
                 if (Direction == Direction.North || Direction == Direction.South)
                 {
+                    // Portal veil - Thicker
                     Raylib.DrawCubeV(
-                        Position + new Vector3(0, 0.5f, 0),
-                        new Vector3(DoorWidth, 0.1f, 0.2f),
+                        Position + new Vector3(0, DoorHeight / 2f, 0),
+                        new Vector3(DoorWidth - 0.2f, DoorHeight, 0.4f),
                         glowColor
+                    );
+
+                    // Top Frame
+                    Raylib.DrawCubeV(
+                        Position + new Vector3(0, DoorHeight, 0),
+                        new Vector3(DoorWidth + 1.0f, 0.5f, 0.6f),
+                        frameColor
+                    );
+
+                    // Left Pillar
+                    Raylib.DrawCubeV(
+                        Position + new Vector3(-(DoorWidth / 2f + 0.25f), DoorHeight / 2f, 0),
+                        new Vector3(0.5f, DoorHeight, 0.6f),
+                        frameColor
+                    );
+
+                    // Right Pillar
+                    Raylib.DrawCubeV(
+                        Position + new Vector3((DoorWidth / 2f + 0.25f), DoorHeight / 2f, 0),
+                        new Vector3(0.5f, DoorHeight, 0.6f),
+                        frameColor
                     );
                 }
                 else
                 {
+                    // Portal veil - Thicker
                     Raylib.DrawCubeV(
-                        Position + new Vector3(0, 0.5f, 0),
-                        new Vector3(0.2f, 0.1f, DoorWidth),
+                        Position + new Vector3(0, DoorHeight / 2f, 0),
+                        new Vector3(0.4f, DoorHeight, DoorWidth - 0.2f),
                         glowColor
+                    );
+
+                    // Top Frame
+                    Raylib.DrawCubeV(
+                        Position + new Vector3(0, DoorHeight, 0),
+                        new Vector3(0.6f, 0.5f, DoorWidth + 1.0f),
+                        frameColor
+                    );
+
+                    // Left Pillar
+                    Raylib.DrawCubeV(
+                        Position + new Vector3(0, DoorHeight / 2f, -(DoorWidth / 2f + 0.25f)),
+                        new Vector3(0.6f, DoorHeight, 0.5f),
+                        frameColor
+                    );
+
+                    // Right Pillar
+                    Raylib.DrawCubeV(
+                        Position + new Vector3(0, DoorHeight / 2f, (DoorWidth / 2f + 0.25f)),
+                        new Vector3(0.6f, DoorHeight, 0.5f),
+                        frameColor
                     );
                 }
             }

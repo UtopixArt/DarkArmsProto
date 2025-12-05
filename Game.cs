@@ -35,8 +35,14 @@ namespace DarkArmsProto
 
         public void Initialize()
         {
-            // Initialize player
-            player = new PlayerController(new Vector3(0, 1.6f, 0));
+            // Initialize room system first to get start position
+            roomManager = new RoomManager();
+            roomManager.GenerateDungeon();
+
+            // Initialize player at start room position
+            // Add height offset (1.6f) to avoid spawning in floor
+            Vector3 startPos = roomManager.CurrentRoom.WorldPosition + new Vector3(0, 1.6f, 0);
+            player = new PlayerController(startPos);
 
             // Initialize weapon system
             weaponSystem = new WeaponSystem(player);
@@ -50,9 +56,7 @@ namespace DarkArmsProto
             // Initialize damage numbers
             damageNumbers = new List<DamageNumber>();
 
-            // Initialize room system
-            roomManager = new RoomManager();
-            roomManager.GenerateDungeon();
+            // Initialize rooms with enemies
             roomManager.InitializeRooms(enemySpawner);
 
             // Get enemies from current room
@@ -62,7 +66,7 @@ namespace DarkArmsProto
         public void Update(float deltaTime)
         {
             // Update player
-            player.Update(deltaTime);
+            player.Update(deltaTime, roomManager.CurrentRoom.WorldPosition);
 
             // Handle shooting
             if (Raylib.IsMouseButtonPressed(MouseButton.Left))
@@ -124,7 +128,7 @@ namespace DarkArmsProto
                             kills++;
 
                             // Spawn new enemy
-                            enemies.Add(enemySpawner.SpawnEnemy());
+                            // enemies.Add(enemySpawner.SpawnEnemy());
                         }
 
                         if (!projectiles[i].Piercing)
@@ -143,7 +147,7 @@ namespace DarkArmsProto
             }
 
             // Update room manager (handles enemies and transitions)
-            roomManager.Update(deltaTime, player.Position);
+            roomManager.Update(deltaTime, player);
             enemies = roomManager.GetCurrentRoomEnemies();
 
             // Check if touching player

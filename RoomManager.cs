@@ -154,38 +154,42 @@ namespace DarkArmsProto
             room.SpawnEnemies(spawner, enemyCount);
         }
 
-        public void Update(float deltaTime, Vector3 playerPosition)
+        public void Update(float deltaTime, PlayerController player)
         {
             if (currentRoom == null)
                 return;
 
             // Update current room enemies
-            currentRoom.UpdateEnemies(deltaTime, playerPosition);
+            currentRoom.UpdateEnemies(deltaTime, player.Position);
 
             // Check for room transitions
-            CheckRoomTransition(playerPosition);
+            CheckRoomTransition(player);
         }
 
-        private void CheckRoomTransition(Vector3 playerPosition)
+        private void CheckRoomTransition(PlayerController player)
         {
             if (currentRoom == null)
                 return;
 
             foreach (var door in currentRoom.Doors.Values)
             {
-                if (door.CanPass(playerPosition))
+                if (door.CanPass(player.Position))
                 {
                     var nextRoom = door.GetDestinationRoom();
                     if (nextRoom != null)
                     {
-                        TransitionToRoom(nextRoom);
+                        TransitionToRoom(nextRoom, door.Direction, player);
                         break;
                     }
                 }
             }
         }
 
-        private void TransitionToRoom(Room newRoom)
+        private void TransitionToRoom(
+            Room newRoom,
+            Direction entryDirection,
+            PlayerController player
+        )
         {
             if (currentRoom == newRoom)
                 return;
@@ -196,6 +200,43 @@ namespace DarkArmsProto
             // Enter new room
             currentRoom = newRoom;
             currentRoom.OnEnter();
+
+            // Determine arrival door (opposite of the one we entered)
+            Direction arrivalDirection = entryDirection switch
+            {
+                Direction.North => Direction.South,
+                Direction.South => Direction.North,
+                Direction.East => Direction.West,
+                Direction.West => Direction.East,
+                _ => Direction.North,
+            };
+
+            // Teleport player to the arrival door of the new room
+            if (newRoom.Doors.TryGetValue(arrivalDirection, out Door? arrivalDoor))
+            {
+                // Calculate push direction (same as movement direction)
+                Vector3 moveDir = entryDirection switch
+                {
+                    Direction.North => new Vector3(0, 0, -1),
+                    Direction.South => new Vector3(0, 0, 1),
+                    Direction.East => new Vector3(1, 0, 0),
+                    Direction.West => new Vector3(-1, 0, 0),
+                    _ => Vector3.Zero,
+                };
+
+                // Teleport to door position + push into room
+                float pushDistance = 4.0f; // Push safely away from door trigger
+                Vector3 targetPos = arrivalDoor.Position + moveDir * pushDistance;
+                targetPos.Y = player.Position.Y; // Keep player height
+                player.Teleport(targetPos);
+            }
+            else
+            {
+                // Fallback: teleport to center if door not found
+                Vector3 targetPos = newRoom.WorldPosition;
+                targetPos.Y = player.Position.Y; // Keep player height
+                player.Teleport(targetPos);
+            }
 
             Console.WriteLine($"Entered {currentRoom.Type} room at {currentRoom.GridPosition}");
         }
