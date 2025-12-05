@@ -1,5 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
+using DarkArmsProto.Components;
+using DarkArmsProto.Core;
 using Raylib_cs;
 
 namespace DarkArmsProto
@@ -17,7 +20,7 @@ namespace DarkArmsProto
         public int EvolutionStage { get; private set; }
         public Dictionary<SoulType, int> AbsorbedSouls { get; private set; }
 
-        private PlayerController player;
+        private GameObject player;
         private float damage;
         private float fireRate;
         private float lastShotTime;
@@ -30,7 +33,7 @@ namespace DarkArmsProto
         };
         private bool canEvolve;
 
-        public WeaponSystem(PlayerController player)
+        public WeaponSystem(GameObject player)
         {
             this.player = player;
             WeaponName = "Flesh Pistol";
@@ -143,11 +146,11 @@ namespace DarkArmsProto
             Console.WriteLine($"[EVOLVED] {WeaponName}!");
         }
 
-        public List<Projectile> Shoot(Camera3D camera)
+        public List<GameObject> Shoot(Camera3D camera)
         {
             float timeSinceLastShot = lastShotTime;
             if (timeSinceLastShot < 1f / fireRate)
-                return new List<Projectile>();
+                return new List<GameObject>();
 
             lastShotTime = 0f;
 
@@ -157,9 +160,9 @@ namespace DarkArmsProto
             return CreateProjectilesForWeapon(camera.Position, direction);
         }
 
-        private List<Projectile> CreateProjectilesForWeapon(Vector3 position, Vector3 direction)
+        private List<GameObject> CreateProjectilesForWeapon(Vector3 position, Vector3 direction)
         {
-            var projectiles = new List<Projectile>();
+            var projectiles = new List<GameObject>();
 
             switch (WeaponName)
             {
@@ -167,7 +170,7 @@ namespace DarkArmsProto
                 case "Apex Predator":
                     // Single big piercing shot
                     projectiles.Add(
-                        new Projectile(
+                        CreateProjectile(
                             position,
                             direction,
                             damage,
@@ -192,7 +195,7 @@ namespace DarkArmsProto
                         spreadDir = Vector3.Normalize(spreadDir);
 
                         projectiles.Add(
-                            new Projectile(
+                            CreateProjectile(
                                 position,
                                 spreadDir,
                                 damage * 0.6f,
@@ -211,7 +214,7 @@ namespace DarkArmsProto
                 case "Inferno Beast":
                     // Fast homing shots
                     projectiles.Add(
-                        new Projectile(
+                        CreateProjectile(
                             position,
                             direction,
                             damage,
@@ -227,7 +230,7 @@ namespace DarkArmsProto
 
                 default: // Flesh Pistol
                     projectiles.Add(
-                        new Projectile(
+                        CreateProjectile(
                             position,
                             direction,
                             damage,
@@ -243,6 +246,42 @@ namespace DarkArmsProto
             }
 
             return projectiles;
+        }
+
+        private GameObject CreateProjectile(
+            Vector3 position,
+            Vector3 direction,
+            float damage,
+            float speed,
+            Color color,
+            float size,
+            bool piercing,
+            bool lifesteal,
+            bool homing
+        )
+        {
+            var go = new GameObject(position);
+
+            var projComp = new ProjectileComponent();
+            projComp.Velocity = direction * speed;
+            projComp.Damage = damage;
+            projComp.Piercing = piercing;
+            projComp.Lifesteal = lifesteal;
+            projComp.Homing = homing;
+            go.AddComponent(projComp);
+
+            var meshComp = new MeshRendererComponent();
+            meshComp.MeshType = MeshType.Sphere;
+            meshComp.Color = color;
+            meshComp.Scale = new Vector3(size);
+            go.AddComponent(meshComp);
+
+            var colComp = new ColliderComponent();
+            colComp.Size = new Vector3(size, size, size); // Small sphere-like box for projectile
+            colComp.IsTrigger = true;
+            go.AddComponent(colComp);
+
+            return go;
         }
 
         private SoulType GetDominantSoulType()

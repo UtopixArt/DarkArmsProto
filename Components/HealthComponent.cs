@@ -1,25 +1,33 @@
+using System;
 using DarkArmsProto.Core;
 
 namespace DarkArmsProto.Components
 {
     public class HealthComponent : Component
     {
-        public float Current { get; private set; }
-        public float Max { get; private set; }
+        public float CurrentHealth { get; set; }
+        public float MaxHealth { get; set; }
         public float HitFlashTime { get; set; }
 
-        public bool IsDead => Current <= 0;
+        public bool IsDead => CurrentHealth <= 0;
+
+        public HealthComponent() { }
 
         public HealthComponent(float max)
         {
-            Max = max;
-            Current = max;
+            MaxHealth = max;
+            CurrentHealth = max;
         }
 
         public void TakeDamage(float amount)
         {
-            Current = Math.Max(0, Current - amount);
+            CurrentHealth = Math.Max(0, CurrentHealth - amount);
             HitFlashTime = GameConfig.HitFlashDuration;
+        }
+
+        public void Heal(float amount)
+        {
+            CurrentHealth = Math.Min(MaxHealth, CurrentHealth + amount);
         }
 
         public override void Update(float deltaTime)

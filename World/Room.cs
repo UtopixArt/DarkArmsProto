@@ -4,7 +4,7 @@ using System.Numerics;
 using DarkArmsProto.Components; // Nécessaire pour HealthComponent et ChaseAIComponent
 using DarkArmsProto.Core;
 
-namespace DarkArmsProto
+namespace DarkArmsProto.World
 {
     public enum RoomType
     {

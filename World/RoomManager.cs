@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using DarkArmsProto.Components;
 using DarkArmsProto.Core;
 
-namespace DarkArmsProto
+namespace DarkArmsProto.World
 {
     public class RoomManager
     {
@@ -155,7 +156,7 @@ namespace DarkArmsProto
             room.SpawnEnemies(spawner, enemyCount);
         }
 
-        public void Update(float deltaTime, PlayerController player)
+        public void Update(float deltaTime, GameObject player)
         {
             if (currentRoom == null)
                 return;
@@ -167,7 +168,7 @@ namespace DarkArmsProto
             CheckRoomTransition(player);
         }
 
-        private void CheckRoomTransition(PlayerController player)
+        private void CheckRoomTransition(GameObject player)
         {
             if (currentRoom == null)
                 return;
@@ -186,11 +187,7 @@ namespace DarkArmsProto
             }
         }
 
-        private void TransitionToRoom(
-            Room newRoom,
-            Direction entryDirection,
-            PlayerController player
-        )
+        private void TransitionToRoom(Room newRoom, Direction entryDirection, GameObject player)
         {
             if (currentRoom == newRoom)
                 return;
@@ -229,17 +226,24 @@ namespace DarkArmsProto
                 float pushDistance = 4.0f; // Push safely away from door trigger
                 Vector3 targetPos = arrivalDoor.Position + moveDir * pushDistance;
                 targetPos.Y = player.Position.Y; // Keep player height
-                player.Teleport(targetPos);
+                player.Position = targetPos;
             }
             else
             {
                 // Fallback: teleport to center if door not found
                 Vector3 targetPos = newRoom.WorldPosition;
                 targetPos.Y = player.Position.Y; // Keep player height
-                player.Teleport(targetPos);
+                player.Position = targetPos;
             }
 
             Console.WriteLine($"Entered {currentRoom.Type} room at {currentRoom.GridPosition}");
+
+            // Update player room center for boundary checks
+            var inputComp = player.GetComponent<PlayerInputComponent>();
+            if (inputComp != null)
+            {
+                inputComp.RoomCenter = currentRoom.WorldPosition;
+            }
         }
 
         public Vector3 GetRoomCenterOffset(Vector3 playerPosition)

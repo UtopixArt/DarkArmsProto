@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-namespace DarkArmsProto
+namespace DarkArmsProto.World
 {
     public class Door
     {

@@ -10,6 +10,11 @@ namespace DarkArmsProto.Core
 
         private List<Component> components = new List<Component>();
 
+        public GameObject(Vector3 position)
+        {
+            Position = position;
+        }
+
         public void AddComponent(Component component)
         {
             component.Owner = this;

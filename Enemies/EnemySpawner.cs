@@ -9,8 +9,7 @@ namespace DarkArmsProto
     {
         public GameObject SpawnEnemy(Vector3 position, SoulType type)
         {
-            GameObject go = new GameObject();
-            go.Position = position;
+            GameObject go = new GameObject(position);
 
             // Stats selon le type
             float hp = (type == SoulType.Beast) ? 150 : 100;
@@ -26,8 +25,14 @@ namespace DarkArmsProto
             // Ajout des composants
             go.AddComponent(new HealthComponent(hp));
             go.AddComponent(new ChaseAIComponent(speed));
-            go.AddComponent(new MeshRendererComponent(color, new Vector3(1, 1.5f, 1)));
+            go.AddComponent(new MeshRendererComponent(color, new Vector3(1.5f, 4.5f, 1.5f))); // Increased size
             go.AddComponent(new EnemyComponent(type)); // Pour savoir quelle âme donner
+            go.AddComponent(new HealthBarComponent()); // Add health bar
+
+            // Add box collider matching the mesh size (1.5f width, 4.5f height, 1.5f depth)
+            var collider = new ColliderComponent();
+            collider.Size = new Vector3(0.75f, 2.25f, 0.75f); // Half-extents (mesh size / 2)
+            go.AddComponent(collider);
 
             return go;
         }
