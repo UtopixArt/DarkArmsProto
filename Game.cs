@@ -180,9 +180,6 @@ namespace DarkArmsProto
             // 3D rendering
             Raylib.BeginMode3D(player.GetCamera());
 
-            // 3D rendering
-            Raylib.BeginMode3D(player.GetCamera());
-
             // Draw rooms (floor, walls, doors)
             roomManager.Render();
 

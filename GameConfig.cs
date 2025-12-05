@@ -10,7 +10,7 @@ namespace DarkArmsProto
         public const float PlayerMoveSpeed = 10f;
         public const float PlayerMouseSensitivity = 0.003f;
         public const float PlayerMaxHealth = 100f;
-        public const float PlayerBoundary = 9.5f;
+        public const float PlayerBoundary = 9f;
 
         // === SCREEN EFFECTS ===
         public const float ScreenShakeIntensity = 0.05f;
