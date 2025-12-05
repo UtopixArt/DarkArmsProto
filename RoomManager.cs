@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using DarkArmsProto.Core;
 
 namespace DarkArmsProto
 {
@@ -276,9 +277,9 @@ namespace DarkArmsProto
             }
         }
 
-        public List<Enemy> GetCurrentRoomEnemies()
+        public List<GameObject> GetCurrentRoomEnemies()
         {
-            return currentRoom?.Enemies ?? new List<Enemy>();
+            return currentRoom?.Enemies ?? new List<GameObject>();
         }
 
         public void InitializeRooms(EnemySpawner spawner)

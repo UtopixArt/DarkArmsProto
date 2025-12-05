@@ -7,7 +7,6 @@ namespace DarkArmsProto
     {
         public Vector3 Position { get; private set; }
         public SoulType Type { get; private set; }
-
         private float health;
         private float maxHealth;
         private float hitFlashTime = 0f;

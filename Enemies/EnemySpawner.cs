@@ -1,34 +1,35 @@
-using System;
 using System.Numerics;
+using DarkArmsProto.Components; // AJOUTER CECI
+using DarkArmsProto.Core; // AJOUTER CECI
+using Raylib_cs;
 
 namespace DarkArmsProto
 {
     public class EnemySpawner
     {
-        private Random random;
-        private float spawnRadius = 12f;
-
-        public EnemySpawner()
+        public GameObject SpawnEnemy(Vector3 position, SoulType type)
         {
-            random = new Random();
-        }
+            GameObject go = new GameObject();
+            go.Position = position;
 
-        public Enemy SpawnEnemy()
-        {
-            // Random position around the room
-            float angle = (float)(random.NextDouble() * Math.PI * 2);
-            float distance = 8f + (float)(random.NextDouble() * 5f);
+            // Stats selon le type
+            float hp = (type == SoulType.Beast) ? 150 : 100;
+            float speed = (type == SoulType.Beast) ? 6 : 4;
+            Color color = (type == SoulType.Beast) ? new Color(255, 136, 0, 255) : Color.Green;
+            if (type == SoulType.Demon)
+            {
+                hp = 200;
+                speed = 5;
+                color = Color.Red;
+            }
 
-            Vector3 position = new Vector3(
-                MathF.Cos(angle) * distance,
-                0.75f,
-                MathF.Sin(angle) * distance
-            );
+            // Ajout des composants
+            go.AddComponent(new HealthComponent(hp));
+            go.AddComponent(new ChaseAIComponent(speed));
+            go.AddComponent(new MeshRendererComponent(color, new Vector3(1, 1.5f, 1)));
+            go.AddComponent(new EnemyComponent(type)); // Pour savoir quelle âme donner
 
-            // Random enemy type
-            SoulType type = (SoulType)random.Next(0, 3);
-
-            return new Enemy(position, type);
+            return go;
         }
     }
 }

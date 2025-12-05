@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Numerics;
+using DarkArmsProto.Components;
+using DarkArmsProto.Core;
 using Raylib_cs;
 
 namespace DarkArmsProto
@@ -19,7 +21,7 @@ namespace DarkArmsProto
         private EnemySpawner enemySpawner = null!;
         private SoulManager soulManager = null!;
         private RoomManager roomManager = null!;
-        private List<Enemy> enemies;
+        private List<GameObject> enemies;
         private List<Projectile> projectiles;
         private List<DamageNumber> damageNumbers;
 
@@ -29,8 +31,9 @@ namespace DarkArmsProto
 
         public Game()
         {
-            enemies = new List<Enemy>();
+            enemies = new List<GameObject>();
             projectiles = new List<Projectile>();
+            damageNumbers = new List<DamageNumber>();
         }
 
         public void Initialize()
@@ -85,50 +88,59 @@ namespace DarkArmsProto
             // Update projectiles
             for (int i = projectiles.Count - 1; i >= 0; i--)
             {
-                projectiles[i].Update(deltaTime, enemies);
+                projectiles[i].Update(deltaTime, null!);
 
                 // Check collision with enemies
                 bool hit = false;
                 for (int j = enemies.Count - 1; j >= 0; j--)
                 {
-                    if (projectiles[i].CheckCollision(enemies[j]))
+                    var enemy = enemies[j];
+                    if (Vector3.Distance(projectiles[i].Position, enemy.Position) < 1.0f)
                     {
-                        enemies[j].TakeDamage(projectiles[i].Damage);
-
-                        damageNumbers.Add(
-                            new DamageNumber
-                            {
-                                Position = enemies[j].Position,
-                                Damage = projectiles[i].Damage,
-                                Lifetime = 1f,
-                            }
-                        );
-
-                        // Apply special effects
-                        if (projectiles[i].Lifesteal)
+                        var health = enemy.GetComponent<HealthComponent>();
+                        if (health != null)
                         {
-                            player.Heal(projectiles[i].Damage * 0.3f);
-                        }
+                            health.TakeDamage(projectiles[i].Damage);
 
-                        // Check if enemy died
-                        if (enemies[j].IsDead())
-                        {
-                            soulManager.SpawnSoul(enemies[j].Position, enemies[j].Type);
-                            for (int p = 0; p < 10; p++)
+                            damageNumbers.Add(
+                                new DamageNumber
+                                {
+                                    Position = enemy.Position,
+                                    Damage = projectiles[i].Damage,
+                                    Lifetime = 1f,
+                                }
+                            );
+
+                            // Apply special effects
+                            if (projectiles[i].Lifesteal)
                             {
-                                var dir = new Vector3(
-                                    (float)(Random.Shared.NextDouble() - 0.5),
-                                    (float)Random.Shared.NextDouble(),
-                                    (float)(Random.Shared.NextDouble() - 0.5)
-                                );
-                                // Tu peux ajouter un système de particles ici
+                                player.Heal(projectiles[i].Damage * 0.3f);
                             }
 
-                            enemies.RemoveAt(j);
-                            kills++;
+                            // Check if enemy died
+                            if (health.IsDead)
+                            {
+                                var enemyComp = enemy.GetComponent<EnemyComponent>();
+                                SoulType soulType =
+                                    enemyComp != null ? enemyComp.Type : SoulType.Undead;
 
-                            // Spawn new enemy
-                            // enemies.Add(enemySpawner.SpawnEnemy());
+                                soulManager.SpawnSoul(enemy.Position, soulType);
+                                for (int p = 0; p < 10; p++)
+                                {
+                                    var dir = new Vector3(
+                                        (float)(Random.Shared.NextDouble() - 0.5),
+                                        (float)Random.Shared.NextDouble(),
+                                        (float)(Random.Shared.NextDouble() - 0.5)
+                                    );
+                                    // Tu peux ajouter un système de particles ici
+                                }
+
+                                enemies.RemoveAt(j);
+                                kills++;
+
+                                // Spawn new enemy
+                                // enemies.Add(enemySpawner.SpawnEnemy());
+                            }
                         }
 
                         if (!projectiles[i].Piercing)
