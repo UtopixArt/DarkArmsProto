@@ -23,8 +23,21 @@ namespace DarkArmsProto.Components
         public bool IsFlying { get; set; } = false;
         public bool IsRanged { get; set; } = false;
 
-        // References
-        public GameObject? TargetObject { get; private set; }
+        // References (automatically resolved via GameWorld)
+        private GameObject? targetObject;
+        public GameObject? TargetObject
+        {
+            get
+            {
+                // Auto-find player if not set (using GameWorld)
+                if (targetObject == null || !targetObject.IsActive)
+                {
+                    targetObject = Core.GameWorld.Instance.Player;
+                }
+                return targetObject;
+            }
+        }
+
         public List<ColliderComponent>? WallColliders { get; set; }
         public Random Random { get; private set; } = new Random();
 
@@ -42,7 +55,7 @@ namespace DarkArmsProto.Components
 
         public void SetTarget(GameObject target)
         {
-            TargetObject = target;
+            targetObject = target;
         }
 
         public void ChangeState(IEnemyState newState)

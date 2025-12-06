@@ -69,8 +69,8 @@ namespace DarkArmsProto.Components
         {
             lastShotTime += deltaTime;
 
-            // Check for evolution input
-            if (canEvolve && Raylib.IsKeyPressed(KeyboardKey.E))
+            // Check for evolution input (using Services instead of Raylib directly)
+            if (canEvolve && Core.Services.Input.GetKeyPressed(KeyboardKey.E))
             {
                 Evolve();
             }

@@ -8,8 +8,9 @@ namespace DarkArmsProto.Components
     /// <summary>
     /// Refactored ProjectileComponent using Strategy Pattern.
     /// Behaviors are composable and extensible.
+    /// Implements ICollisionHandler for automatic collision detection.
     /// </summary>
-    public class ProjectileComponent : Component
+    public class ProjectileComponent : Component, ICollisionHandler
     {
         // Core properties
         public Vector3 Velocity { get; set; }
@@ -126,6 +127,72 @@ namespace DarkArmsProto.Components
             }
 
             return shouldDestroy;
+        }
+
+        /// <summary>
+        /// ICollisionHandler implementation - called automatically by CollisionSystem
+        /// </summary>
+        public void OnCollision(GameObject other)
+        {
+            // Skip if projectile already dead
+            if (!Owner.IsActive)
+                return;
+
+            // Player projectile hits enemy
+            if (!IsEnemyProjectile && other.CompareTag("Enemy"))
+            {
+                HandleEnemyHit(other);
+            }
+            // Enemy projectile hits player
+            else if (IsEnemyProjectile && other.CompareTag("Player"))
+            {
+                HandlePlayerHit(other);
+            }
+        }
+
+        private void HandleEnemyHit(GameObject enemy)
+        {
+            // Apply damage
+            var health = enemy.GetComponent<HealthComponent>();
+            if (health != null)
+            {
+                health.TakeDamage(Damage);
+
+                // Add damage number
+                Systems.DamageNumberManager.AddDamageNumber(enemy.Position, Damage);
+
+                // Impact VFX
+                var mesh = Owner.GetComponent<MeshRendererComponent>();
+                Raylib_cs.Color color = mesh != null ? mesh.Color : Raylib_cs.Color.White;
+                VFX.VFXHelper.SpawnImpact(Owner.Position, color, 10);
+
+                // Check if enemy died - handled by EnemyDeathComponent now
+            }
+
+            // Ask behaviors if should destroy
+            bool shouldDestroy = OnHit(enemy, Owner.Position);
+
+            if (shouldDestroy)
+            {
+                Owner.IsActive = false;
+            }
+        }
+
+        private void HandlePlayerHit(GameObject player)
+        {
+            // Apply damage to player
+            var health = player.GetComponent<HealthComponent>();
+            if (health != null)
+            {
+                health.TakeDamage(Damage);
+
+                // Impact VFX
+                var mesh = Owner.GetComponent<MeshRendererComponent>();
+                Raylib_cs.Color color = mesh != null ? mesh.Color : Raylib_cs.Color.Red;
+                VFX.VFXHelper.SpawnImpact(Owner.Position, color, 5);
+            }
+
+            Owner.IsActive = false;
         }
     }
 }

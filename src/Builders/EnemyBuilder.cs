@@ -183,8 +183,6 @@ namespace DarkArmsProto.Builders
                 enemy.AddComponent(new MeshRendererComponent(color, meshSize));
             }
 
-            // Enemy tag
-            enemy.AddComponent(new EnemyComponent(soulType));
 
             // Health bar
             float healthBarOffset = isFlying ? 1.5f : GameConfig.EnemyHealthBarOffsetY;
@@ -197,6 +195,9 @@ namespace DarkArmsProto.Builders
 
             // Collider
             enemy.AddComponent(new ColliderComponent { Size = colliderSize });
+
+            // Death handler (manages soul spawning and VFX on death)
+            enemy.AddComponent(new EnemyDeathComponent(soulType));
 
             return enemy;
         }

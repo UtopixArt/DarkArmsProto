@@ -8,11 +8,24 @@ namespace DarkArmsProto.Core
         public Vector3 Position { get; set; }
         public bool IsActive { get; set; } = true;
 
+        private string tag = "Untagged";
+        public string Tag
+        {
+            get => tag;
+            set
+            {
+                string oldTag = tag;
+                tag = value;
+                GameWorld.Instance.UpdateTag(this, oldTag, value);
+            }
+        }
+
         private List<Component> components = new List<Component>();
 
-        public GameObject(Vector3 position)
+        public GameObject(Vector3 position, string tag = "Untagged")
         {
             Position = position;
+            this.tag = tag;
         }
 
         public void AddComponent(Component component)
@@ -31,6 +44,21 @@ namespace DarkArmsProto.Core
                     return typed;
             }
             return null!;
+        }
+
+        public List<Component> GetAllComponents()
+        {
+            return new List<Component>(components);
+        }
+
+        public bool HasTag(string checkTag)
+        {
+            return tag == checkTag;
+        }
+
+        public bool CompareTag(string checkTag)
+        {
+            return tag == checkTag;
         }
 
         public void Update(float deltaTime)

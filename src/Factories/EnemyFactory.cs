@@ -43,7 +43,12 @@ namespace DarkArmsProto.Factories
             if (enemyData.IsRanged)
                 builder.AsRanged();
 
-            return builder.Build();
+            var enemy = builder.Build();
+
+            // Register enemy to GameWorld automatically
+            GameWorld.Instance.Register(enemy, "Enemy");
+
+            return enemy;
         }
     }
 }
