@@ -192,14 +192,67 @@ namespace DarkArmsProto.World
             return WorldPosition + offset;
         }
 
+        public List<SpawnerData> LayoutSpawners { get; private set; } = new List<SpawnerData>();
+
+        public void ApplyLayout(RoomLayout layout)
+        {
+            InteriorObjects.Clear();
+            WallColliders.Clear();
+            RoomLights.Clear();
+
+            // Re-create outer walls
+            CreateWallColliders();
+
+            // Apply Platforms
+            foreach (var p in layout.Platforms)
+            {
+                AddPlatform(WorldPosition + new Vector3(p.X, p.Y, p.Z), new Vector3(p.W, p.H, p.D));
+            }
+
+            // Apply Lights
+            foreach (var l in layout.Lights)
+            {
+                var color = new Color(l.R, l.G, l.B, (byte)255);
+                var light = new DynamicLight
+                {
+                    Position = WorldPosition + new Vector3(l.X, l.Y, l.Z),
+                    Color = color,
+                    Intensity = l.Intensity,
+                    Radius = 2.0f,
+                };
+                RoomLights.Add(light);
+            }
+
+            LayoutSpawners = layout.Spawners;
+        }
+
         public void SpawnEnemies(
             EnemySpawner spawner,
             int count,
-            Action<Vector3, Vector3, float> onProjectileSpawn
+            Action<Vector3, Vector3, float, SoulType> onProjectileSpawn
         )
         {
             InitialEnemyCount = count;
             Random rng = new Random();
+
+            if (LayoutSpawners.Count > 0)
+            {
+                InitialEnemyCount = LayoutSpawners.Count;
+                foreach (var s in LayoutSpawners)
+                {
+                    Vector3 pos = WorldPosition + new Vector3(s.X, s.Y, s.Z);
+                    var enemy = spawner.SpawnEnemy(pos, (SoulType)s.Type);
+
+                    var ai = enemy.GetComponent<EnemyAIComponent>();
+                    if (ai != null)
+                    {
+                        ai.OnShoot += onProjectileSpawn;
+                    }
+
+                    Enemies.Add(enemy);
+                }
+                return;
+            }
 
             for (int i = 0; i < count; i++)
             {
@@ -217,7 +270,7 @@ namespace DarkArmsProto.World
                         var (min, max) = collider.GetBounds();
                         float x = (float)(rng.NextDouble() * (max.X - min.X) + min.X);
                         float z = (float)(rng.NextDouble() * (max.Z - min.Z) + min.Z);
-                        spawnPos = new Vector3(x, max.Y + 1.0f, z); // +1 to avoid clipping
+                        spawnPos = new Vector3(x, max.Y, z); // Exact top surface
                     }
                     else
                     {
@@ -518,7 +571,6 @@ namespace DarkArmsProto.World
         {
             // Half the room is raised
             float height = 4f;
-            float size = GameConfig.RoomSize / 2f - 2f;
 
             // Large platform on West side
             AddPlatform(WorldPosition + new Vector3(-8, height, 0), new Vector3(10, 0.5f, 20));

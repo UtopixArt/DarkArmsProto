@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
+using System.Text.Json;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
 using DarkArmsProto.VFX;
@@ -13,6 +15,7 @@ namespace DarkArmsProto.World
         private Room? currentRoom;
         private Random random;
         private LightManager? lightManager;
+        private List<RoomLayout> roomTemplates = new List<RoomLayout>();
 
         public Room CurrentRoom => currentRoom!;
 
@@ -22,6 +25,31 @@ namespace DarkArmsProto.World
         {
             rooms = new Dictionary<Vector2, Room>();
             random = new Random();
+            LoadTemplates();
+        }
+
+        private void LoadTemplates()
+        {
+            string path = Path.Combine("resources", "rooms");
+            if (!Directory.Exists(path))
+                return;
+
+            foreach (var file in Directory.GetFiles(path, "*.json"))
+            {
+                try
+                {
+                    string json = File.ReadAllText(file);
+                    var layout = JsonSerializer.Deserialize<RoomLayout>(json);
+                    if (layout != null)
+                    {
+                        roomTemplates.Add(layout);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Failed to load room template {file}: {e.Message}");
+                }
+            }
         }
 
         public void SetLightManager(LightManager lm)
@@ -98,6 +126,18 @@ namespace DarkArmsProto.World
 
                 // Create new room
                 var newRoom = new Room(newPos, roomType);
+
+                // Apply template if available
+                if (roomType == RoomType.Normal && roomTemplates.Count > 0)
+                {
+                    // 50% chance to use a template
+                    if (random.NextDouble() < 0.5)
+                    {
+                        var template = roomTemplates[random.Next(roomTemplates.Count)];
+                        newRoom.ApplyLayout(template);
+                    }
+                }
+
                 rooms[newPos] = newRoom;
 
                 // Recurse
@@ -155,7 +195,7 @@ namespace DarkArmsProto.World
         public void SpawnEnemiesInRoom(
             Room room,
             EnemySpawner spawner,
-            Action<Vector3, Vector3, float> onProjectileSpawn
+            Action<Vector3, Vector3, float, SoulType> onProjectileSpawn
         )
         {
             if (
@@ -322,7 +362,7 @@ namespace DarkArmsProto.World
 
         public void InitializeRooms(
             EnemySpawner spawner,
-            Action<Vector3, Vector3, float> onProjectileSpawn
+            Action<Vector3, Vector3, float, SoulType> onProjectileSpawn
         )
         {
             foreach (var room in rooms.Values)

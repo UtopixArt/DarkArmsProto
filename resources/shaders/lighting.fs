@@ -30,6 +30,7 @@ struct Light {
 // Input lighting values
 uniform Light lights[MAX_LIGHTS];
 uniform vec3 viewPos;
+uniform float shininess = 16.0;
 
 void main()
 {
@@ -63,7 +64,7 @@ void main()
             lightDot += lights[i].color.rgb * NdotL;
 
             float specCo = 0.0;
-            if (NdotL > 0.0) specCo = pow(max(0.0, dot(viewD, reflect(-(light), normal))), 16.0); // 16.0 is shininess
+            if (NdotL > 0.0) specCo = pow(max(0.0, dot(viewD, reflect(-(light), normal))), shininess);
             specular += specCo;
         }
     }

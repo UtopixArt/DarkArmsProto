@@ -9,13 +9,14 @@ namespace DarkArmsProto.Components
     public class WeaponComponent : Component
     {
         // Weapon stats
-        public string WeaponName { get; private set; }
+        public string WeaponName { get; private set; } = "Flesh Pistol";
         public int EvolutionStage { get; private set; }
         public float Damage { get; private set; }
         public float FireRate { get; private set; }
 
         // Soul tracking
-        public Dictionary<SoulType, int> AbsorbedSouls { get; private set; }
+        public Dictionary<SoulType, int> AbsorbedSouls { get; private set; } =
+            new Dictionary<SoulType, int>();
         public int TotalSouls =>
             AbsorbedSouls[SoulType.Beast]
             + AbsorbedSouls[SoulType.Undead]
@@ -29,6 +30,7 @@ namespace DarkArmsProto.Components
             GameConfig.RequiredSoulsStage2,
             GameConfig.RequiredSoulsStage3,
             GameConfig.RequiredSoulsStage4,
+            GameConfig.RequiredSoulsStage5,
         };
 
         // Callbacks
@@ -70,7 +72,7 @@ namespace DarkArmsProto.Components
 
         private void CheckEvolution()
         {
-            if (EvolutionStage > 3)
+            if (EvolutionStage > 4)
                 return;
 
             int required = requiredSouls[EvolutionStage - 1];
@@ -131,6 +133,48 @@ namespace DarkArmsProto.Components
                         break;
                 }
             }
+            else if (EvolutionStage == 3)
+            {
+                switch (dominant)
+                {
+                    case SoulType.Beast:
+                        newName = "Feral Shredder";
+                        damageMult = GameConfig.FeralShredderDamageMult;
+                        fireRateMult = GameConfig.FeralShredderFireRateMult;
+                        break;
+                    case SoulType.Undead:
+                        newName = "Plague Spreader";
+                        damageMult = GameConfig.PlagueSpreaderDamageMult;
+                        fireRateMult = GameConfig.PlagueSpreaderFireRateMult;
+                        break;
+                    case SoulType.Demon:
+                        newName = "Hellfire Missiles";
+                        damageMult = GameConfig.HellfireMissilesDamageMult;
+                        fireRateMult = GameConfig.HellfireMissilesFireRateMult;
+                        break;
+                }
+            }
+            else if (EvolutionStage == 4)
+            {
+                switch (dominant)
+                {
+                    case SoulType.Beast:
+                        newName = "Omega Fang";
+                        damageMult = GameConfig.OmegaFangDamageMult;
+                        fireRateMult = GameConfig.OmegaFangFireRateMult;
+                        break;
+                    case SoulType.Undead:
+                        newName = "Death's Hand";
+                        damageMult = GameConfig.DeathsHandDamageMult;
+                        fireRateMult = GameConfig.DeathsHandFireRateMult;
+                        break;
+                    case SoulType.Demon:
+                        newName = "Armageddon";
+                        damageMult = GameConfig.ArmageddonDamageMult;
+                        fireRateMult = GameConfig.ArmageddonFireRateMult;
+                        break;
+                }
+            }
 
             WeaponName = newName;
             Damage *= damageMult;
@@ -180,16 +224,45 @@ namespace DarkArmsProto.Components
             switch (WeaponName)
             {
                 case "Bone Revolver":
-                case "Apex Predator":
+                    // SMG Style: Fast, low damage, slight spread
+                    Vector3 smgDir = direction;
+                    float smgSpread = (float)(new Random().NextDouble() * 0.1f - 0.05f);
+                    smgDir.X += smgSpread;
+                    smgDir.Y += smgSpread;
+                    smgDir = Vector3.Normalize(smgDir);
+
                     projectiles.Add(
                         CreateProjectile(
                             position,
-                            direction,
-                            Damage,
-                            20f,
-                            new Color(255, 170, 102, 255),
-                            0.5f,
-                            true,
+                            smgDir,
+                            Damage * 0.4f, // Lower damage per shot
+                            25f,
+                            new Color(255, 200, 150, 255),
+                            0.2f,
+                            false,
+                            false,
+                            false
+                        )
+                    );
+                    break;
+
+                case "Apex Predator":
+                    // Minigun Style: Extreme fire rate handled by stats, here just spread
+                    Vector3 miniDir = direction;
+                    float miniSpread = (float)(new Random().NextDouble() * 0.2f - 0.1f);
+                    miniDir.X += miniSpread;
+                    miniDir.Y += miniSpread;
+                    miniDir = Vector3.Normalize(miniDir);
+
+                    projectiles.Add(
+                        CreateProjectile(
+                            position,
+                            miniDir,
+                            Damage * 0.3f,
+                            30f,
+                            new Color(255, 100, 50, 255),
+                            0.2f,
+                            true, // Piercing
                             false,
                             false
                         )
@@ -197,11 +270,11 @@ namespace DarkArmsProto.Components
                     break;
 
                 case "Tendril Burst":
-                case "Necrotic Cannon":
-                    for (int i = 0; i < 5; i++)
+                    // Shotgun
+                    for (int i = 0; i < 6; i++)
                     {
                         Vector3 spreadDir = direction;
-                        float spread = (i - 2) * 0.15f;
+                        float spread = (i - 2.5f) * 0.1f;
                         spreadDir.X += spread;
                         spreadDir = Vector3.Normalize(spreadDir);
 
@@ -209,31 +282,231 @@ namespace DarkArmsProto.Components
                             CreateProjectile(
                                 position,
                                 spreadDir,
-                                Damage * 0.6f,
-                                15f,
-                                new Color(0, 255, 102, 255),
+                                Damage * 0.5f,
+                                18f,
+                                new Color(100, 255, 100, 255),
                                 0.25f,
                                 false,
-                                true,
+                                true, // Lifesteal
                                 false
                             )
                         );
                     }
                     break;
 
-                case "Parasite Swarm":
-                case "Inferno Beast":
+                case "Necrotic Cannon":
+                    // Grenade Launcher: Explosive
                     projectiles.Add(
                         CreateProjectile(
                             position,
                             direction,
-                            Damage,
-                            18f,
-                            new Color(255, 0, 102, 255),
-                            0.3f,
+                            Damage * 2.0f,
+                            15f,
+                            new Color(50, 255, 50, 255),
+                            0.6f,
                             false,
                             false,
-                            true
+                            false,
+                            true, // Explosive
+                            5.0f // Radius
+                        )
+                    );
+                    break;
+
+                case "Parasite Swarm":
+                    // Homing Swarm
+                    for (int i = 0; i < 3; i++)
+                    {
+                        Vector3 swarmDir = direction;
+                        float spread = (i - 1) * 0.3f;
+                        swarmDir.X += spread;
+                        swarmDir = Vector3.Normalize(swarmDir);
+
+                        projectiles.Add(
+                            CreateProjectile(
+                                position,
+                                swarmDir,
+                                Damage * 0.6f,
+                                12f,
+                                new Color(200, 0, 255, 255),
+                                0.3f,
+                                false,
+                                false,
+                                true // Homing
+                            )
+                        );
+                    }
+                    break;
+
+                case "Inferno Beast":
+                    // Railgun: Fast, Piercing, High Damage
+                    projectiles.Add(
+                        CreateProjectile(
+                            position,
+                            direction,
+                            Damage * 3.0f,
+                            60f, // Very fast
+                            new Color(255, 50, 0, 255),
+                            0.4f,
+                            true, // Piercing
+                            false,
+                            false
+                        )
+                    );
+                    break;
+
+                // === STAGE 4 WEAPONS ===
+
+                case "Feral Shredder":
+                    // Chain Gun: High spread, high speed, piercing
+                    for (int i = 0; i < 2; i++) // Double barrel
+                    {
+                        Vector3 feralDir = direction;
+                        float feralSpread = (float)(new Random().NextDouble() * 0.3f - 0.15f);
+                        feralDir.X += feralSpread;
+                        feralDir.Y += feralSpread;
+                        feralDir = Vector3.Normalize(feralDir);
+
+                        projectiles.Add(
+                            CreateProjectile(
+                                position,
+                                feralDir,
+                                Damage * 0.4f,
+                                40f,
+                                new Color(255, 255, 0, 255),
+                                0.25f,
+                                true, // Piercing
+                                false,
+                                false
+                            )
+                        );
+                    }
+                    break;
+
+                case "Plague Spreader":
+                    // Explosive Shotgun
+                    for (int i = 0; i < 8; i++)
+                    {
+                        Vector3 plagueDir = direction;
+                        float spread = (i - 3.5f) * 0.15f;
+                        plagueDir.X += spread;
+                        plagueDir = Vector3.Normalize(plagueDir);
+
+                        projectiles.Add(
+                            CreateProjectile(
+                                position,
+                                plagueDir,
+                                Damage * 0.8f,
+                                20f,
+                                new Color(0, 255, 0, 255),
+                                0.3f,
+                                false,
+                                false,
+                                false,
+                                true, // Explosive
+                                3.0f // Smaller radius per pellet
+                            )
+                        );
+                    }
+                    break;
+
+                case "Hellfire Missiles":
+                    // Explosive Homing
+                    for (int i = 0; i < 4; i++)
+                    {
+                        Vector3 hellDir = direction;
+                        float spread = (i - 1.5f) * 0.4f;
+                        hellDir.X += spread;
+                        hellDir = Vector3.Normalize(hellDir);
+
+                        projectiles.Add(
+                            CreateProjectile(
+                                position,
+                                hellDir,
+                                Damage * 1.5f,
+                                15f,
+                                new Color(255, 100, 0, 255),
+                                0.5f,
+                                false,
+                                false,
+                                true, // Homing
+                                true, // Explosive
+                                4.0f
+                            )
+                        );
+                    }
+                    break;
+
+                // === STAGE 5 WEAPONS ===
+
+                case "Omega Fang":
+                    // Triple Minigun Stream
+                    for (int i = 0; i < 3; i++)
+                    {
+                        Vector3 omegaDir = direction;
+                        float angle = (i - 1) * 0.2f; // -0.2, 0, 0.2 radians roughly
+                        // Rotate vector simply by adding to X/Z for 2D-ish spread
+                        omegaDir.X += angle;
+                        omegaDir = Vector3.Normalize(omegaDir);
+
+                        projectiles.Add(
+                            CreateProjectile(
+                                position,
+                                omegaDir,
+                                Damage * 0.5f,
+                                50f,
+                                new Color(255, 255, 255, 255),
+                                0.3f,
+                                true, // Piercing
+                                true, // Lifesteal
+                                false
+                            )
+                        );
+                    }
+                    break;
+
+                case "Death's Hand":
+                    // Wall of Death: Many projectiles in a line
+                    for (int i = 0; i < 12; i++)
+                    {
+                        Vector3 deathDir = direction;
+                        // Create a wall perpendicular to direction?
+                        // For simplicity, just a very wide shotgun
+                        float spread = (i - 5.5f) * 0.05f;
+                        deathDir.X += spread;
+                        deathDir = Vector3.Normalize(deathDir);
+
+                        projectiles.Add(
+                            CreateProjectile(
+                                position,
+                                deathDir,
+                                Damage * 2.0f,
+                                10f, // Slow
+                                new Color(50, 0, 50, 255),
+                                0.8f, // Large
+                                true, // Piercing
+                                true, // Lifesteal
+                                false
+                            )
+                        );
+                    }
+                    break;
+
+                case "Armageddon":
+                    // Nuke: Single massive slow projectile
+                    projectiles.Add(
+                        CreateProjectile(
+                            position,
+                            direction,
+                            Damage * 10.0f,
+                            8f, // Very slow
+                            new Color(255, 0, 0, 255),
+                            2.0f, // Huge
+                            false,
+                            false,
+                            false,
+                            true, // Explosive
+                            15.0f // Massive radius
                         )
                     );
                     break;
@@ -267,7 +540,9 @@ namespace DarkArmsProto.Components
             float size,
             bool piercing,
             bool lifesteal,
-            bool homing
+            bool homing,
+            bool explosive = false,
+            float explosionRadius = 0f
         )
         {
             var go = new GameObject(position);
@@ -278,6 +553,8 @@ namespace DarkArmsProto.Components
             projComp.Piercing = piercing;
             projComp.Lifesteal = lifesteal;
             projComp.Homing = homing;
+            projComp.Explosive = explosive;
+            projComp.ExplosionRadius = explosionRadius;
             go.AddComponent(projComp);
 
             var meshComp = new MeshRendererComponent();

@@ -9,7 +9,17 @@ namespace DarkArmsProto
     {
         public GameObject SpawnEnemy(Vector3 position, SoulType type)
         {
-            GameObject go = new GameObject(position);
+            // Calculate sprite size first to adjust spawn height
+            float spriteSize = type == SoulType.Demon ? GameConfig.DemonMeshSize : 3.5f;
+
+            // Adjust Y to be on ground (pivot at center)
+            Vector3 spawnPos = position + new Vector3(0, spriteSize / 2.0f, 0);
+
+            // Flying enemies start a bit higher
+            if (type == SoulType.Demon)
+                spawnPos.Y += 1.5f;
+
+            GameObject go = new GameObject(spawnPos);
 
             // Stats selon le type (using GameConfig)
             float hp = type switch
@@ -72,7 +82,17 @@ namespace DarkArmsProto
             // Ajout des composants
             go.AddComponent(new HealthComponent(hp));
             go.AddComponent(new EnemyAIComponent(type, speed));
-            go.AddComponent(new MeshRendererComponent(color, meshSize));
+
+            string texturePath = type switch
+            {
+                SoulType.Beast => "resources/images/beast.png",
+                SoulType.Undead => "resources/images/undead.png",
+                SoulType.Demon => "resources/images/demon.png",
+                _ => "resources/images/undead.png",
+            };
+
+            go.AddComponent(new SpriteRendererComponent(texturePath, spriteSize, Color.White));
+
             go.AddComponent(new EnemyComponent(type)); // Pour savoir quelle âme donner
             go.AddComponent(
                 new HealthBarComponent(

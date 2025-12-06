@@ -28,26 +28,49 @@ namespace DarkArmsProto
         // Weapon evolution thresholds
         public const int RequiredSoulsStage2 = 10;
         public const int RequiredSoulsStage3 = 25;
-        public const int RequiredSoulsStage4 = 50; // For future use
+        public const int RequiredSoulsStage4 = 50;
+        public const int RequiredSoulsStage5 = 100;
 
         // Weapon evolution multipliers
-        public const float BoneRevolverDamageMult = 2.0f;
-        public const float BoneRevolverFireRateMult = 0.5f;
+        // Stage 2
+        public const float BoneRevolverDamageMult = 0.5f; // SMG
+        public const float BoneRevolverFireRateMult = 3.0f;
 
-        public const float TendrilBurstDamageMult = 1.3f;
-        public const float TendrilBurstFireRateMult = 1.5f;
+        public const float TendrilBurstDamageMult = 1.0f; // Shotgun
+        public const float TendrilBurstFireRateMult = 0.8f;
 
-        public const float ParasiteSwarmDamageMult = 0.8f;
-        public const float ParasiteSwarmFireRateMult = 2.0f;
+        public const float ParasiteSwarmDamageMult = 0.6f; // Homing
+        public const float ParasiteSwarmFireRateMult = 1.5f;
 
-        public const float ApexPredatorDamageMult = 3.0f;
-        public const float ApexPredatorFireRateMult = 0.7f;
+        // Stage 3
+        public const float ApexPredatorDamageMult = 0.4f; // Minigun
+        public const float ApexPredatorFireRateMult = 6.0f;
 
-        public const float NecroticCannonDamageMult = 2.5f;
-        public const float NecroticCannonFireRateMult = 1.2f;
+        public const float NecroticCannonDamageMult = 3.0f; // Grenade
+        public const float NecroticCannonFireRateMult = 0.5f;
 
-        public const float InfernoBeastDamageMult = 2.0f;
-        public const float InfernoBeastFireRateMult = 1.8f;
+        public const float InfernoBeastDamageMult = 5.0f; // Railgun
+        public const float InfernoBeastFireRateMult = 0.4f;
+
+        // Stage 4
+        public const float FeralShredderDamageMult = 0.5f; // Ricochet/Chain
+        public const float FeralShredderFireRateMult = 8.0f;
+
+        public const float PlagueSpreaderDamageMult = 1.5f; // Explosive Shotgun
+        public const float PlagueSpreaderFireRateMult = 0.7f;
+
+        public const float HellfireMissilesDamageMult = 2.0f; // Explosive Homing
+        public const float HellfireMissilesFireRateMult = 1.0f;
+
+        // Stage 5
+        public const float OmegaFangDamageMult = 0.6f; // Triple Minigun
+        public const float OmegaFangFireRateMult = 10.0f;
+
+        public const float DeathsHandDamageMult = 4.0f; // Wall of Death
+        public const float DeathsHandFireRateMult = 0.3f;
+
+        public const float ArmageddonDamageMult = 20.0f; // Nuke
+        public const float ArmageddonFireRateMult = 0.1f;
 
         // === PROJECTILE SETTINGS ===
         public const float ProjectileMaxLifetime = 5f;

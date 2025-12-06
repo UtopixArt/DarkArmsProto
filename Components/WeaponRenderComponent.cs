@@ -96,13 +96,11 @@ namespace DarkArmsProto.Components
             Vector3 endPos = weaponPos + forward * 0.8f;
 
             // Draw main barrel
-            Raylib.DrawCapsule(weaponPos, endPos, 0.08f, 8, 8, Color.DarkGray);
-            Raylib.DrawCapsuleWires(weaponPos, endPos, 0.08f, 8, 8, Color.Gray);
+            Raylib.DrawCapsule(weaponPos, endPos, 0.08f, 8, 8, new Color(192, 192, 192, 255)); // Light Gray (Silver)
 
             // Draw handle/body part (simple box approximation)
             Vector3 handlePos = weaponPos - up * 0.15f - forward * 0.1f;
-            Raylib.DrawCube(handlePos, 0.15f, 0.3f, 0.2f, Color.Black);
-            Raylib.DrawCubeWires(handlePos, 0.15f, 0.3f, 0.2f, Color.Gray);
+            Raylib.DrawCube(handlePos, 0.15f, 0.3f, 0.2f, new Color(80, 80, 80, 255)); // Dark Gray
         }
     }
 }

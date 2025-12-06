@@ -29,7 +29,7 @@ namespace DarkArmsProto.Components
         public Random Random { get; private set; } = new Random();
 
         // Events
-        public event Action<Vector3, Vector3, float>? OnShoot; // Pos, Dir, Damage
+        public event Action<Vector3, Vector3, float, SoulType>? OnShoot; // Pos, Dir, Damage, Type
 
         public EnemyAIComponent(SoulType type, float speed)
         {
@@ -48,12 +48,12 @@ namespace DarkArmsProto.Components
                     IsRanged = false;
                     break;
                 case SoulType.Undead: // Slow, standard
-                    AttackRange = 1.8f;
-                    DetectionRange = 12.0f;
-                    AttackCooldown = 1.5f;
+                    AttackRange = 10.0f; // Increased range for poison throw
+                    DetectionRange = 15.0f;
+                    AttackCooldown = 2.0f;
                     Damage = 10f;
                     IsFlying = false;
-                    IsRanged = false;
+                    IsRanged = true; // Now ranged
                     break;
                 case SoulType.Demon: // Flying, Ranged, Strong
                     AttackRange = 15.0f; // Increased range
@@ -83,7 +83,7 @@ namespace DarkArmsProto.Components
 
         public void FireProjectile(Vector3 pos, Vector3 dir)
         {
-            OnShoot?.Invoke(pos, dir, Damage);
+            OnShoot?.Invoke(pos, dir, Damage, Type);
         }
 
         public override void Update(float deltaTime)

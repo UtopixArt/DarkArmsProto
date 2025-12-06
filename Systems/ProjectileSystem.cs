@@ -1,3 +1,4 @@
+using System; // Added
 using System.Collections.Generic;
 using System.Numerics;
 using DarkArmsProto.Audio;
@@ -18,6 +19,7 @@ namespace DarkArmsProto.Systems
         private List<ColliderComponent> walls;
 
         public List<GameObject> Projectiles => projectiles;
+        public Action<Vector3, float, float>? OnExplosion; // Pos, Radius, Damage
 
         public ProjectileSystem(
             GameObject player,
@@ -105,14 +107,30 @@ namespace DarkArmsProto.Systems
         /// <summary>
         /// Spawns a projectile fired by an enemy
         /// </summary>
-        public void SpawnEnemyProjectile(Vector3 position, Vector3 direction, float damage)
+        public void SpawnEnemyProjectile(
+            Vector3 position,
+            Vector3 direction,
+            float damage,
+            SoulType type
+        )
         {
             var projectile = new GameObject(position);
+
+            float speed = 20.0f;
+            Color color = Color.Red;
+            Vector3 size = new Vector3(0.4f, 0.4f, 0.4f);
+
+            if (type == SoulType.Undead)
+            {
+                speed = 12.0f; // Slower poison projectile
+                color = Color.Green;
+                size = new Vector3(0.3f, 0.3f, 0.3f);
+            }
 
             // Projectile Component
             var projComp = new ProjectileComponent
             {
-                Velocity = Vector3.Normalize(direction) * 20.0f, // Faster (was 15.0f)
+                Velocity = Vector3.Normalize(direction) * speed,
                 Damage = damage,
                 Lifetime = 5.0f,
                 IsEnemyProjectile = true,
@@ -120,12 +138,10 @@ namespace DarkArmsProto.Systems
             projectile.AddComponent(projComp);
 
             // Visuals
-            projectile.AddComponent(
-                new MeshRendererComponent(Color.Red, new Vector3(0.4f, 0.4f, 0.4f)) // Slightly larger
-            );
+            projectile.AddComponent(new MeshRendererComponent(color, size));
 
             // Light
-            lightManager.AddMuzzleFlash(position, Color.Red);
+            lightManager.AddMuzzleFlash(position, color);
 
             projectiles.Add(projectile);
 
@@ -159,6 +175,16 @@ namespace DarkArmsProto.Systems
                         {
                             // Hit wall
                             proj.IsActive = false;
+
+                            // Check for explosion
+                            if (projComp.Explosive)
+                            {
+                                OnExplosion?.Invoke(
+                                    proj.Position,
+                                    projComp.ExplosionRadius,
+                                    projComp.Damage
+                                );
+                            }
 
                             // Visuals
                             var projMesh = proj.GetComponent<MeshRendererComponent>();

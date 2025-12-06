@@ -12,7 +12,8 @@ namespace DarkArmsProto.Audio
         SoulCollect,
         WeaponEvolve,
         PlayerHit,
-        Teleport
+        Teleport,
+        Explosion,
     }
 
     public class AudioManager

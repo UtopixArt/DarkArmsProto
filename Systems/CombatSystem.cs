@@ -4,6 +4,7 @@ using DarkArmsProto.Audio;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
 using DarkArmsProto.VFX;
+using DarkArmsProto.World; // Added
 using Raylib_cs;
 
 namespace DarkArmsProto.Systems
@@ -21,6 +22,7 @@ namespace DarkArmsProto.Systems
         private SoulManager soulManager;
         private ParticleManager particleManager;
         private LightManager lightManager;
+        private RoomManager roomManager; // Added reference
         private List<DamageNumber> damageNumbers;
         private int kills;
 
@@ -31,13 +33,15 @@ namespace DarkArmsProto.Systems
             GameObject player,
             SoulManager soulManager,
             ParticleManager particleManager,
-            LightManager lightManager
+            LightManager lightManager,
+            RoomManager roomManager // Added parameter
         )
         {
             this.player = player;
             this.soulManager = soulManager;
             this.particleManager = particleManager;
             this.lightManager = lightManager;
+            this.roomManager = roomManager;
             this.damageNumbers = new List<DamageNumber>();
             this.kills = 0;
         }
@@ -115,6 +119,17 @@ namespace DarkArmsProto.Systems
 
                         if (collision)
                         {
+                            if (projComp.Explosive)
+                            {
+                                TriggerExplosion(
+                                    proj.Position,
+                                    projComp.ExplosionRadius,
+                                    projComp.Damage
+                                );
+                                hit = true;
+                                break;
+                            }
+
                             var health = enemy.GetComponent<HealthComponent>();
                             if (health != null)
                             {
@@ -259,6 +274,54 @@ namespace DarkArmsProto.Systems
             // Remove enemy and increment kill counter
             enemies.RemoveAt(enemyIndex);
             kills++;
+        }
+
+        public void TriggerExplosion(Vector3 position, float radius, float damage)
+        {
+            // Visuals
+            particleManager.SpawnExplosion(position, Color.Orange, 50);
+            lightManager.AddExplosionLight(position, Color.Orange);
+            AudioManager.Instance.PlaySound(SoundType.Explosion, 0.5f);
+
+            // Screen shake
+            var screenShake = player.GetComponent<ScreenShakeComponent>();
+            if (screenShake != null)
+            {
+                screenShake.AddTrauma(0.5f);
+            }
+
+            // Damage enemies
+            var enemies = roomManager.GetCurrentRoomEnemies();
+            for (int i = enemies.Count - 1; i >= 0; i--)
+            {
+                var enemy = enemies[i];
+                float dist = Vector3.Distance(position, enemy.Position);
+
+                if (dist <= radius)
+                {
+                    var health = enemy.GetComponent<HealthComponent>();
+                    if (health != null)
+                    {
+                        // Falloff damage? No, full damage for now.
+                        health.TakeDamage(damage);
+
+                        // Add damage number
+                        damageNumbers.Add(
+                            new DamageNumber
+                            {
+                                Position = enemy.Position + new Vector3(0, 2, 0),
+                                Damage = damage,
+                                Lifetime = 1f,
+                            }
+                        );
+
+                        if (health.IsDead)
+                        {
+                            HandleEnemyDeath(enemy, enemies, i);
+                        }
+                    }
+                }
+            }
         }
     }
 }

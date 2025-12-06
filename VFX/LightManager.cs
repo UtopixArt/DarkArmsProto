@@ -25,6 +25,7 @@ namespace DarkArmsProto.VFX
         private bool shaderLoaded = false;
         private int viewPosLoc;
         private int ambientLoc;
+        private int shininessLoc;
 
         // Shader light locations
         private const int MAX_LIGHTS = 32;
@@ -48,6 +49,7 @@ namespace DarkArmsProto.VFX
                 // LightingShader.Locs[(int)ShaderLocationIndex.VectorView] = Raylib.GetShaderLocation(LightingShader, "viewPos");
                 viewPosLoc = Raylib.GetShaderLocation(LightingShader, "viewPos");
                 ambientLoc = Raylib.GetShaderLocation(LightingShader, "ambient");
+                shininessLoc = Raylib.GetShaderLocation(LightingShader, "shininess");
 
                 // Set ambient light
                 float[] ambient = new float[] { 0.05f, 0.05f, 0.05f, 1.0f }; // Darker ambient (was 0.2)
@@ -81,6 +83,13 @@ namespace DarkArmsProto.VFX
             }
         }
 
+        public void SetShininess(float value)
+        {
+            if (!shaderLoaded)
+                return;
+            Raylib.SetShaderValue(LightingShader, shininessLoc, value, ShaderUniformDataType.Float);
+        }
+
         public void UpdateShader(Camera3D camera)
         {
             if (!shaderLoaded)
@@ -108,7 +117,7 @@ namespace DarkArmsProto.VFX
                 0,
                 new Vector3(0, 10, 0),
                 Vector3.Zero,
-                new Color(20, 20, 30, 255)
+                new Vector3(20 / 255f, 20 / 255f, 30 / 255f)
             );
 
             // Update dynamic lights
@@ -127,11 +136,11 @@ namespace DarkArmsProto.VFX
                     if (light.Flicker)
                         intensity *= 0.8f + (float)random.NextDouble() * 0.4f;
 
-                    Color finalColor = new Color(
-                        (int)Math.Min(255, light.Color.R * intensity),
-                        (int)Math.Min(255, light.Color.G * intensity),
-                        (int)Math.Min(255, light.Color.B * intensity),
-                        255
+                    // Calculate color with intensity (allowing > 1.0 for HDR-like effect)
+                    Vector3 finalColor = new Vector3(
+                        (light.Color.R / 255f) * intensity,
+                        (light.Color.G / 255f) * intensity,
+                        (light.Color.B / 255f) * intensity
                     );
 
                     UpdateLight(shaderIndex, true, 1, light.Position, Vector3.Zero, finalColor);
@@ -139,7 +148,7 @@ namespace DarkArmsProto.VFX
                 else
                 {
                     // Disable unused lights
-                    UpdateLight(shaderIndex, false, 1, Vector3.Zero, Vector3.Zero, Color.Black);
+                    UpdateLight(shaderIndex, false, 1, Vector3.Zero, Vector3.Zero, Vector3.Zero);
                 }
             }
         }
@@ -150,7 +159,7 @@ namespace DarkArmsProto.VFX
             int type,
             Vector3 pos,
             Vector3 target,
-            Color color
+            Vector3 color
         )
         {
             Raylib.SetShaderValue(
@@ -177,7 +186,7 @@ namespace DarkArmsProto.VFX
                 ShaderUniformDataType.Vec3
             );
 
-            float[] colorVal = { color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f };
+            float[] colorVal = { color.X, color.Y, color.Z, 1.0f };
             Raylib.SetShaderValue(
                 LightingShader,
                 colorLocs[index],
@@ -252,7 +261,7 @@ namespace DarkArmsProto.VFX
         /// </summary>
         public void AddExplosionLight(Vector3 position, Color baseColor)
         {
-            AddLight(position, baseColor, 5.0f, 10f, 0.8f, flicker: true); // Reduced from 8.0/30.0/1.2
+            AddLight(position, baseColor, 2.0f, 6f, 0.6f, flicker: true); // Reduced intensity significantly
         }
 
         /// <summary>
@@ -260,7 +269,7 @@ namespace DarkArmsProto.VFX
         /// </summary>
         public void AddMuzzleFlash(Vector3 position, Color color)
         {
-            AddLight(position, color, 5.0f, 4f, 0.1f, flicker: true); // Reduced from 10.0/15.0/0.2
+            AddLight(position, color, 1.0f, 3f, 0.1f, flicker: true); // Reduced intensity
         }
 
         /// <summary>
@@ -268,7 +277,7 @@ namespace DarkArmsProto.VFX
         /// </summary>
         public void AddImpactLight(Vector3 position, Color color)
         {
-            AddLight(position, color, 3.0f, 5f, 0.3f, flicker: false); // Reduced from 5.0/12.0/0.5
+            AddLight(position, color, 1.5f, 4f, 0.3f, flicker: false); // Reduced intensity
         }
 
         public void Update(float deltaTime)

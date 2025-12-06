@@ -24,9 +24,9 @@ namespace DarkArmsProto
         private CombatSystem combatSystem = null!;
         private ProjectileSystem projectileSystem = null!;
         private GameUI gameUI = null!;
+        private MapEditor mapEditor = null!;
 
         // Game state
-        private int currentRoom = 1;
         private bool showColliderDebug = true;
 
         public static Camera3D GameCamera;
@@ -104,24 +104,53 @@ namespace DarkArmsProto
             enemySpawner = new EnemySpawner();
 
             // Initialize new systems
-            combatSystem = new CombatSystem(player, soulManager, particleManager, lightManager);
+            combatSystem = new CombatSystem(
+                player,
+                soulManager,
+                particleManager,
+                lightManager,
+                roomManager
+            );
             projectileSystem = new ProjectileSystem(player, particleManager, lightManager);
+
+            // Wire up explosion event
+            projectileSystem.OnExplosion += combatSystem.TriggerExplosion;
+
             gameUI = new GameUI(player, roomManager);
+            mapEditor = new MapEditor();
+            mapEditor.SetLightManager(lightManager);
 
             roomManager.SetLightManager(lightManager);
 
             // Initialize rooms with enemies
             roomManager.InitializeRooms(
                 enemySpawner,
-                (pos, dir, dmg) =>
+                (pos, dir, dmg, type) =>
                 {
-                    projectileSystem.SpawnEnemyProjectile(pos, dir, dmg);
+                    projectileSystem.SpawnEnemyProjectile(pos, dir, dmg, type);
                 }
             );
         }
 
         public void Update(float deltaTime)
         {
+            // Toggle Editor
+            if (Raylib.IsKeyPressed(KeyboardKey.F1))
+            {
+                var editorCamComp = player.GetComponent<CameraComponent>();
+                if (editorCamComp != null)
+                {
+                    mapEditor.Toggle(roomManager.CurrentRoom, editorCamComp.Camera);
+                }
+            }
+
+            if (mapEditor.IsActive)
+            {
+                mapEditor.Update(deltaTime);
+                GameCamera = mapEditor.GetCamera();
+                return; // Skip game update
+            }
+
             // Toggle collider debug with F3
             if (Raylib.IsKeyPressed(KeyboardKey.F3))
             {
@@ -172,63 +201,101 @@ namespace DarkArmsProto
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
 
-            var cameraComp = player.GetComponent<CameraComponent>();
-            if (cameraComp != null)
+            Camera3D renderCamera;
+            bool isEditor = mapEditor.IsActive;
+
+            if (isEditor)
             {
-                // Apply screen shake to camera
-                var screenShake = player.GetComponent<ScreenShakeComponent>();
-                Camera3D shakyCam = cameraComp.Camera;
-                if (screenShake != null)
+                renderCamera = mapEditor.GetCamera();
+            }
+            else
+            {
+                var cameraComp = player.GetComponent<CameraComponent>();
+                if (cameraComp != null)
                 {
-                    shakyCam.Position += screenShake.ShakeOffset;
-                    shakyCam.Target += screenShake.ShakeOffset;
-                }
-
-                // Update lighting shader with camera position
-                lightManager.UpdateShader(shakyCam);
-
-                // 3D rendering
-                Raylib.BeginMode3D(shakyCam);
-
-                // Render lit objects
-                Raylib.BeginShaderMode(lightManager.LightingShader);
-                roomManager.Render();
-                Raylib.EndShaderMode();
-
-                // Render unlit/emissive objects
-                projectileSystem.Render();
-                soulManager.Render();
-                particleManager.Render();
-                lightManager.Render(); // Render dynamic lights (billboards)
-
-                // Render Weapon
-                var weaponRender = player.GetComponent<WeaponRenderComponent>();
-                weaponRender?.Render();
-
-                // Draw collider debug wireframes
-                if (showColliderDebug)
-                {
-                    var playerCollider = player.GetComponent<ColliderComponent>();
-                    playerCollider?.Render();
-
-                    var enemies = roomManager.GetCurrentRoomEnemies();
-                    foreach (var enemy in enemies)
+                    renderCamera = cameraComp.Camera;
+                    // Apply screen shake to camera
+                    var screenShake = player.GetComponent<ScreenShakeComponent>();
+                    if (screenShake != null)
                     {
-                        enemy.GetComponent<ColliderComponent>()?.Render();
+                        renderCamera.Position += screenShake.ShakeOffset;
+                        renderCamera.Target += screenShake.ShakeOffset;
                     }
-
-                    projectileSystem.RenderColliderDebug();
                 }
-
-                Raylib.EndMode3D();
-
-                // Render damage numbers
-                gameUI.RenderDamageNumbers(combatSystem.DamageNumbers, cameraComp.Camera);
+                else
+                {
+                    Raylib.EndDrawing();
+                    return;
+                }
             }
 
-            // 2D UI
-            gameUI.RenderUI(combatSystem.Kills, showColliderDebug);
-            gameUI.RenderEnemyHealthBars(roomManager.GetCurrentRoomEnemies());
+            // Update lighting shader with camera position
+            lightManager.UpdateShader(renderCamera);
+
+            // Update static GameCamera for components that need it (like billboards)
+            GameCamera = renderCamera;
+
+            // 3D rendering
+            Raylib.BeginMode3D(renderCamera);
+
+            // Render lit objects
+            lightManager.SetShininess(6.0f);
+            Raylib.BeginShaderMode(lightManager.LightingShader);
+            roomManager.Render();
+            Raylib.EndShaderMode();
+
+            // Render unlit/emissive objects
+            projectileSystem.Render();
+            soulManager.Render();
+            particleManager.Render();
+            lightManager.Render(); // Render dynamic lights (billboards)
+
+            // Render Weapon (only if not in editor, or maybe yes?)
+            if (!isEditor)
+            {
+                lightManager.SetShininess(6.0f); // Broader highlights for better visibility
+                Raylib.BeginShaderMode(lightManager.LightingShader);
+                var weaponRender = player.GetComponent<WeaponRenderComponent>();
+                weaponRender?.Render();
+                Raylib.EndShaderMode();
+            }
+
+            // Draw collider debug wireframes
+            if (showColliderDebug || isEditor)
+            {
+                var playerCollider = player.GetComponent<ColliderComponent>();
+                playerCollider?.Render();
+
+                var enemies = roomManager.GetCurrentRoomEnemies();
+                foreach (var enemy in enemies)
+                {
+                    enemy.GetComponent<ColliderComponent>()?.Render();
+                }
+
+                projectileSystem.RenderColliderDebug();
+            }
+
+            Raylib.EndMode3D();
+
+            // Render damage numbers
+            if (!isEditor)
+            {
+                var cameraComp = player.GetComponent<CameraComponent>();
+                if (cameraComp != null)
+                    gameUI.RenderDamageNumbers(combatSystem.DamageNumbers, cameraComp.Camera);
+            }
+
+            // Editor Render (Gizmos & UI)
+            if (isEditor)
+            {
+                mapEditor.Render();
+            }
+            else
+            {
+                // 2D UI
+                gameUI.RenderUI(combatSystem.Kills, showColliderDebug);
+                gameUI.RenderEnemyHealthBars(roomManager.GetCurrentRoomEnemies());
+            }
 
             Raylib.EndDrawing();
         }
