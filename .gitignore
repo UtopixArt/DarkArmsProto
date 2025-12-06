@@ -11,9 +11,12 @@ bld/
 [Bb]in/
 [Oo]bj/
 
+
 # Visual Studio / Rider
 .vs/
 .vscode/
+.config/
+.claude/
 .idea/
 *.suo
 *.user
