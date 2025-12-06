@@ -32,8 +32,12 @@ namespace DarkArmsProto.Data
             {
                 string json = File.ReadAllText(path);
 
-                // Configure JSON options to be case-insensitive
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                // Configure JSON options to be case-insensitive and use snake_case
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                };
 
                 var config = JsonSerializer.Deserialize<EnemiesConfig>(json, options);
 
