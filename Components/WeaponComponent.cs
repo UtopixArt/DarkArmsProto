@@ -516,8 +516,8 @@ namespace DarkArmsProto.Components
                         CreateProjectile(
                             position,
                             direction,
-                            Damage,
-                            15f,
+                            Damage * 1.5f, // Increased power
+                            45f, // Increased speed (was 15f)
                             new Color(255, 0, 255, 255),
                             0.3f,
                             false,

@@ -15,6 +15,7 @@ namespace DarkArmsProto.Systems
         private GameObject player;
         private ParticleManager particleManager;
         private LightManager lightManager;
+        private PhysicsSystem? physicsSystem;
         private List<GameObject> enemies;
         private List<ColliderComponent> walls;
 
@@ -35,6 +36,11 @@ namespace DarkArmsProto.Systems
             this.walls = new List<ColliderComponent>();
         }
 
+        public void SetPhysicsSystem(PhysicsSystem physics)
+        {
+            this.physicsSystem = physics;
+        }
+
         /// <summary>
         /// Update the enemies list reference for homing projectiles
         /// </summary>
@@ -47,6 +53,46 @@ namespace DarkArmsProto.Systems
         public void SetWalls(List<ColliderComponent> walls)
         {
             this.walls = walls;
+        }
+
+        /// <summary>
+        /// Add physics components to a projectile
+        /// </summary>
+        private void AddPhysicsToProjectile(GameObject projectile, Vector3 velocity)
+        {
+            if (physicsSystem == null)
+                return;
+
+            // Enable gravity on the component for manual simulation
+            var projComp = projectile.GetComponent<ProjectileComponent>();
+            if (projComp != null)
+            {
+                projComp.UseGravity = true;
+            }
+
+            // Add sphere shape (small radius for projectiles)
+            var physicsShape = new PhysicsShapeComponent();
+            physicsShape.Initialize(physicsSystem);
+            physicsShape.SetSphere(0.15f); // Small sphere for projectile
+            projectile.AddComponent(physicsShape);
+
+            // Add kinematic rigidbody (safer than dynamic for projectiles spawning inside player)
+            var rigidbody = new RigidbodyComponent();
+            rigidbody.Mass = 1.0f;
+            rigidbody.IsKinematic = true; // Kinematic: we control movement manually
+            rigidbody.UseGravity = false; // Handled by ProjectileComponent
+            rigidbody.LockRotationX = true;
+            rigidbody.LockRotationY = true;
+            rigidbody.LockRotationZ = true;
+
+            // Set collision group based on projectile type
+            rigidbody.Group = projComp.IsEnemyProjectile
+                ? CollisionGroup.EnemyProjectile
+                : CollisionGroup.PlayerProjectile;
+
+            rigidbody.Initialize(physicsSystem);
+            projectile.AddComponent(rigidbody);
+            rigidbody.CreateBody(physicsShape.GetShapeIndex(), physicsShape.GetEffectiveRadius());
         }
 
         /// <summary>
@@ -64,6 +110,16 @@ namespace DarkArmsProto.Systems
                     var newProjectiles = weaponComp.TryShoot(cameraComp.Camera);
                     if (newProjectiles.Count > 0)
                     {
+                        // Add physics to each new projectile
+                        foreach (var proj in newProjectiles)
+                        {
+                            var projComp = proj.GetComponent<ProjectileComponent>();
+                            if (projComp != null)
+                            {
+                                AddPhysicsToProjectile(proj, projComp.Velocity);
+                            }
+                        }
+
                         projectiles.AddRange(newProjectiles);
 
                         // Play shoot sound
@@ -139,6 +195,9 @@ namespace DarkArmsProto.Systems
 
             // Visuals
             projectile.AddComponent(new MeshRendererComponent(color, size));
+
+            // Add physics
+            AddPhysicsToProjectile(projectile, projComp.Velocity);
 
             // Light
             lightManager.AddMuzzleFlash(position, color);

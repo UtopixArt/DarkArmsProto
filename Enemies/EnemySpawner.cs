@@ -1,12 +1,20 @@
 using System.Numerics;
-using DarkArmsProto.Components; // AJOUTER CECI
-using DarkArmsProto.Core; // AJOUTER CECI
+using DarkArmsProto.Components;
+using DarkArmsProto.Core;
+using DarkArmsProto.Systems;
 using Raylib_cs;
 
 namespace DarkArmsProto
 {
     public class EnemySpawner
     {
+        private PhysicsSystem? physicsSystem;
+
+        public void SetPhysicsSystem(PhysicsSystem physics)
+        {
+            this.physicsSystem = physics;
+        }
+
         public GameObject SpawnEnemy(Vector3 position, SoulType type)
         {
             // Calculate sprite size first to adjust spawn height
@@ -109,6 +117,44 @@ namespace DarkArmsProto
             var collider = new ColliderComponent();
             collider.Size = colliderSize;
             go.AddComponent(collider);
+
+            // Add BepuPhysics components (if physics system available)
+            if (physicsSystem != null)
+            {
+                // Determine physics shape based on enemy type
+                var physicsShape = new PhysicsShapeComponent();
+                physicsShape.Initialize(physicsSystem);
+
+                if (type == SoulType.Demon)
+                {
+                    // Sphere for flying demons
+                    physicsShape.SetSphere(GameConfig.DemonColliderSize / 2.0f);
+                }
+                else
+                {
+                    // Capsule for ground enemies
+                    float radius = Math.Min(colliderSize.X, colliderSize.Z) / 2.0f;
+                    float height = colliderSize.Y - radius * 2.0f; // Height of cylinder part
+                    physicsShape.SetCapsule(radius, height);
+                }
+
+                go.AddComponent(physicsShape);
+
+                // Add rigidbody (kinematic for AI-controlled movement)
+                var rigidbody = new RigidbodyComponent();
+                rigidbody.Mass = 50f; // Enemy mass
+                rigidbody.IsKinematic = true; // Kinematic so AI controls movement
+                rigidbody.LockRotationX = true;
+                rigidbody.LockRotationY = true;
+                rigidbody.LockRotationZ = true;
+                rigidbody.Group = CollisionGroup.Enemy; // Set collision group
+                rigidbody.Initialize(physicsSystem);
+                go.AddComponent(rigidbody);
+                rigidbody.CreateBody(
+                    physicsShape.GetShapeIndex(),
+                    physicsShape.GetEffectiveRadius()
+                );
+            }
 
             return go;
         }

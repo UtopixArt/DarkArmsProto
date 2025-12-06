@@ -25,6 +25,7 @@ namespace DarkArmsProto
         private ProjectileSystem projectileSystem = null!;
         private GameUI gameUI = null!;
         private MapEditor mapEditor = null!;
+        private PhysicsSystem physicsSystem = null!;
 
         // Game state
         private bool showColliderDebug = true;
@@ -43,8 +44,18 @@ namespace DarkArmsProto
             WhiteTexture = Raylib.LoadTextureFromImage(img);
             Raylib.UnloadImage(img);
 
-            // Initialize room system first to get start position
+            // Initialize physics system first
+            physicsSystem = new PhysicsSystem
+            {
+                Gravity = new Vector3(0, -30f, 0), // Same as PlayerInputComponent gravity
+            };
+
+            // Create physics floor
+            physicsSystem.CreateFloor();
+
+            // Initialize room system and generate dungeon with physics
             roomManager = new RoomManager();
+            roomManager.SetPhysicsSystem(physicsSystem);
             roomManager.GenerateDungeon();
 
             // Initialize player at start room position
@@ -102,6 +113,24 @@ namespace DarkArmsProto
             soulManager = new SoulManager(weaponComp);
             soulManager.SetParticleManager(particleManager);
             enemySpawner = new EnemySpawner();
+            enemySpawner.SetPhysicsSystem(physicsSystem);
+
+            // Add BepuPhysics to player
+            var physicsShape = new PhysicsShapeComponent();
+            physicsShape.Initialize(physicsSystem);
+            physicsShape.SetCapsule(0.4f, 1.6f); // radius, height
+            player.AddComponent(physicsShape);
+
+            var rigidbody = new RigidbodyComponent();
+            rigidbody.Mass = 75f;
+            rigidbody.IsKinematic = true; // Kinematic for precise FPS control
+            rigidbody.LockRotationX = true;
+            rigidbody.LockRotationY = true;
+            rigidbody.LockRotationZ = true;
+            rigidbody.Group = CollisionGroup.Player; // Set collision group
+            rigidbody.Initialize(physicsSystem); // Initialize AFTER setting properties
+            player.AddComponent(rigidbody); // Add to player FIRST so Owner is set
+            rigidbody.CreateBody(physicsShape.GetShapeIndex(), physicsShape.GetEffectiveRadius());
 
             // Initialize new systems
             combatSystem = new CombatSystem(
@@ -112,6 +141,7 @@ namespace DarkArmsProto
                 roomManager
             );
             projectileSystem = new ProjectileSystem(player, particleManager, lightManager);
+            projectileSystem.SetPhysicsSystem(physicsSystem);
 
             // Wire up explosion event
             projectileSystem.OnExplosion += combatSystem.TriggerExplosion;
@@ -159,6 +189,9 @@ namespace DarkArmsProto
 
             // Update player
             player.Update(deltaTime);
+
+            // Update physics simulation
+            physicsSystem.Update(deltaTime);
 
             // Update global camera reference
             var camComp = player.GetComponent<CameraComponent>();
@@ -304,6 +337,7 @@ namespace DarkArmsProto
         {
             AudioManager.Instance.Cleanup();
             lightManager.Cleanup();
+            physicsSystem.Dispose();
         }
     }
 }

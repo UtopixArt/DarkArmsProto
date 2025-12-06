@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using BepuPhysics;
 using DarkArmsProto.Components; // Nécessaire pour HealthComponent et ChaseAIComponent
 using DarkArmsProto.Core;
+using DarkArmsProto.Systems;
 using DarkArmsProto.VFX;
 using Raylib_cs;
 
@@ -42,6 +44,10 @@ namespace DarkArmsProto.World
 
         // Wall colliders for physics
         public List<ColliderComponent> WallColliders { get; private set; }
+
+        // BepuPhysics static walls
+        private List<StaticHandle> physicsWalls = new List<StaticHandle>();
+        private PhysicsSystem? physicsSystem;
 
         // Interior objects and lights
         public List<GameObject> InteriorObjects { get; private set; }
@@ -155,6 +161,68 @@ namespace DarkArmsProto.World
             };
             ceilingObj.AddComponent(ceilingCollider);
             WallColliders.Add(ceilingCollider);
+        }
+
+        /// <summary>
+        /// Create physics walls for BepuPhysics simulation.
+        /// Call this after creating the room to add static colliders.
+        /// </summary>
+        public void CreatePhysicsWalls(PhysicsSystem physics)
+        {
+            physicsSystem = physics;
+            float halfSize = GameConfig.RoomSize / 2f;
+            float wallHeight = GameConfig.WallHeight;
+            float wallThickness = 0.5f;
+
+            // North wall
+            var northHandle = physics.CreateWall(
+                WorldPosition + new Vector3(0, wallHeight / 2f, -halfSize),
+                new Vector3(halfSize * 2, wallHeight, wallThickness)
+            );
+            physicsWalls.Add(northHandle);
+
+            // South wall
+            var southHandle = physics.CreateWall(
+                WorldPosition + new Vector3(0, wallHeight / 2f, halfSize),
+                new Vector3(halfSize * 2, wallHeight, wallThickness)
+            );
+            physicsWalls.Add(southHandle);
+
+            // East wall
+            var eastHandle = physics.CreateWall(
+                WorldPosition + new Vector3(halfSize, wallHeight / 2f, 0),
+                new Vector3(wallThickness, wallHeight, halfSize * 2)
+            );
+            physicsWalls.Add(eastHandle);
+
+            // West wall
+            var westHandle = physics.CreateWall(
+                WorldPosition + new Vector3(-halfSize, wallHeight / 2f, 0),
+                new Vector3(wallThickness, wallHeight, halfSize * 2)
+            );
+            physicsWalls.Add(westHandle);
+
+            // Ceiling (prevents flying too high)
+            var ceilingHandle = physics.CreatePlatform(
+                WorldPosition + new Vector3(0, wallHeight + 0.5f, 0),
+                new Vector3(halfSize * 2, 1f, halfSize * 2)
+            );
+            physicsWalls.Add(ceilingHandle);
+        }
+
+        /// <summary>
+        /// Remove physics walls when room is destroyed.
+        /// </summary>
+        public void DestroyPhysicsWalls()
+        {
+            if (physicsSystem != null)
+            {
+                foreach (var handle in physicsWalls)
+                {
+                    physicsSystem.RemoveStatic(handle);
+                }
+                physicsWalls.Clear();
+            }
         }
 
         public void AddConnection(Direction direction, Room otherRoom)

@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text.Json;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
+using DarkArmsProto.Systems;
 using DarkArmsProto.VFX;
 
 namespace DarkArmsProto.World
@@ -15,6 +16,7 @@ namespace DarkArmsProto.World
         private Room? currentRoom;
         private Random random;
         private LightManager? lightManager;
+        private PhysicsSystem? physicsSystem;
         private List<RoomLayout> roomTemplates = new List<RoomLayout>();
 
         public Room CurrentRoom => currentRoom!;
@@ -57,6 +59,11 @@ namespace DarkArmsProto.World
             this.lightManager = lm;
         }
 
+        public void SetPhysicsSystem(PhysicsSystem physics)
+        {
+            this.physicsSystem = physics;
+        }
+
         public void GenerateDungeon()
         {
             // Larger dungeon grid
@@ -78,6 +85,15 @@ namespace DarkArmsProto.World
 
             // Connect rooms with doors
             ConnectRooms();
+
+            // Create physics walls for all rooms
+            if (physicsSystem != null)
+            {
+                foreach (var room in rooms.Values)
+                {
+                    room.CreatePhysicsWalls(physicsSystem);
+                }
+            }
         }
 
         private void GenerateRoomsRecursive(Room parentRoom, int depth, int maxRooms)

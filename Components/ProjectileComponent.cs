@@ -18,11 +18,31 @@ namespace DarkArmsProto.Components
         public bool IsEnemyProjectile { get; set; } = false;
         public bool Explosive { get; set; } = false;
         public float ExplosionRadius { get; set; } = 3.0f;
+        public bool UseGravity { get; set; } = false;
 
         public static List<GameObject> Enemies { get; set; } = new List<GameObject>();
 
         public override void Update(float deltaTime)
         {
+            // Apply gravity if enabled
+            if (UseGravity)
+            {
+                Velocity += new Vector3(0, GameConfig.Gravity, 0) * deltaTime;
+            }
+
+            // If we have a dynamic rigidbody, let physics handle the movement
+            var rb = Owner.GetComponent<RigidbodyComponent>();
+            if (rb != null && !rb.IsKinematic)
+            {
+                // Sync velocity from physics for logic (like homing)
+                Velocity = rb.LinearVelocity;
+            }
+            else
+            {
+                // Manual movement for kinematic/non-physics projectiles
+                Owner.Position += Velocity * deltaTime;
+            }
+
             if (Homing && Enemies != null)
             {
                 GameObject? closestEnemy = null;
@@ -50,10 +70,15 @@ namespace DarkArmsProto.Components
                     );
                     float speed = Velocity.Length();
                     Velocity = newDir * speed;
+
+                    // Update physics velocity if using rigidbody
+                    if (rb != null && !rb.IsKinematic)
+                    {
+                        rb.SetVelocity(Velocity);
+                    }
                 }
             }
 
-            Owner.Position += Velocity * deltaTime;
             Lifetime -= deltaTime;
             if (Lifetime <= 0)
             {

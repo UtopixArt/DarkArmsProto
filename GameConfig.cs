@@ -11,6 +11,7 @@ namespace DarkArmsProto
         public const float PlayerMouseSensitivity = 0.003f;
         public const float PlayerMaxHealth = 100f;
         public const float PlayerBoundary = 13.5f; // Updated for larger rooms (RoomSize 30)
+        public const float Gravity = -30f; // Global gravity
 
         // Player collider settings
         public const float PlayerColliderWidth = 0.4f;
