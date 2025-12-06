@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using DarkArmsProto.Components; // Nécessaire pour HealthComponent et ChaseAIComponent
 using DarkArmsProto.Core;
+using DarkArmsProto.Factories;
 using DarkArmsProto.VFX;
 using Raylib_cs;
 
@@ -227,7 +228,7 @@ namespace DarkArmsProto.World
         }
 
         public void SpawnEnemies(
-            EnemySpawner spawner,
+            EnemyFactory spawner,
             int count,
             Action<Vector3, Vector3, float, SoulType> onProjectileSpawn
         )
@@ -299,9 +300,9 @@ namespace DarkArmsProto.World
                 else
                 {
                     double roll = rng.NextDouble();
-                    if (roll < 0.15) // 15% Beast
+                    if (roll < 0.55) // 50% Beast
                         soulType = SoulType.Beast;
-                    else if (roll < 0.60) // 45% Demon
+                    else if (roll < 0.70) // 45% Demon
                         soulType = SoulType.Demon;
                     else // 40% Undead
                         soulType = SoulType.Undead;

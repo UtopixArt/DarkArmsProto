@@ -118,7 +118,10 @@ namespace DarkArmsProto.Components
             Console.WriteLine($"[EVOLVED] {WeaponName}!");
         }
 
-        public List<GameObject> TryShoot(Camera3D camera)
+        public List<GameObject> TryShoot(
+            Camera3D camera,
+            Action<Vector3, float, float>? explosionCallback = null
+        )
         {
             float timeSinceLastShot = lastShotTime;
             if (timeSinceLastShot < 1f / FireRate)
@@ -140,6 +143,13 @@ namespace DarkArmsProto.Components
             Vector3 targetPoint = camera.Position + cameraForward * 50f;
             Vector3 direction = Vector3.Normalize(targetPoint - spawnPos);
 
+            // Heal callback
+            Action<float>? healCallback = (amount) =>
+            {
+                var health = Owner.GetComponent<HealthComponent>();
+                health?.Heal(amount);
+            };
+
             // Use factory to create projectiles
             var projectiles =
                 currentWeapon != null
@@ -147,7 +157,9 @@ namespace DarkArmsProto.Components
                         spawnPos,
                         direction,
                         Damage,
-                        currentWeapon
+                        currentWeapon,
+                        explosionCallback,
+                        healCallback
                     )
                     : new List<GameObject>();
 

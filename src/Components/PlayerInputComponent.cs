@@ -16,11 +16,15 @@ namespace DarkArmsProto.Components
         public bool IsGrounded { get; private set; } = false;
 
         public Vector3 RoomCenter { get; set; }
-        public float Boundary { get; set; } = 9f;
+
         public List<ColliderComponent>? WallColliders { get; set; }
 
         private float yaw;
         private float pitch;
+
+        private float footRayLength = 1.5f;
+        private float footOffset = 0.8f; // Start higher to avoid starting inside floor
+        private float slopeMaxCos = 0.5f; // cos(60°)
 
         public override void Update(float deltaTime)
         {
@@ -49,164 +53,140 @@ namespace DarkArmsProto.Components
 
         private void HandleMovement(float deltaTime)
         {
-            // 1. Vertical Movement & Gravity
+            var playerCollider = Owner.GetComponent<ColliderComponent>();
+
+            // Input direction
+            Vector3 forward = Vector3.Normalize(new Vector3(MathF.Sin(yaw), 0, MathF.Cos(yaw)));
+            Vector3 right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
+            Vector3 moveDir = Vector3.Zero;
+            if (Raylib.IsKeyDown(KeyboardKey.W))
+                moveDir += forward;
+            if (Raylib.IsKeyDown(KeyboardKey.S))
+                moveDir -= forward;
+            if (Raylib.IsKeyDown(KeyboardKey.A))
+                moveDir -= right;
+            if (Raylib.IsKeyDown(KeyboardKey.D))
+                moveDir += right;
+            if (moveDir != Vector3.Zero)
+                moveDir = Vector3.Normalize(moveDir);
+
+            // Jump
             if (IsGrounded && Raylib.IsKeyPressed(KeyboardKey.Space))
             {
                 VerticalVelocity = JumpForce;
                 IsGrounded = false;
             }
 
+            // Gravity
             VerticalVelocity -= Gravity * deltaTime;
-            Vector3 verticalMove = new Vector3(0, VerticalVelocity * deltaTime, 0);
-            Owner.Position += verticalMove;
-
             IsGrounded = false;
-            var playerCollider = Owner.GetComponent<ColliderComponent>();
 
-            // Floor Check
-            if (Owner.Position.Y <= 0)
+            // Ground check via raycast
+            if (playerCollider != null && WallColliders != null)
             {
-                Owner.Position = new Vector3(Owner.Position.X, 0, Owner.Position.Z);
-                VerticalVelocity = 0;
-                IsGrounded = true;
-            }
-            // Platform Check (only if falling)
-            else if (VerticalVelocity <= 0 && playerCollider != null && WallColliders != null)
-            {
+                Vector3 rayOrigin = Owner.Position + new Vector3(0, footOffset, 0);
+                Vector3 rayDir = -Vector3.UnitY;
+                float bestY = float.MinValue;
+
                 foreach (var wall in WallColliders)
                 {
-                    if (playerCollider.CheckCollision(wall))
+                    if (wall == null)
+                        continue;
+                    if (
+                        wall.Raycast(
+                            rayOrigin,
+                            rayDir,
+                            footRayLength,
+                            out float hitDist,
+                            out Vector3 hitNormal,
+                            out Vector3 hitPoint
+                        )
+                    )
                     {
-                        var (minW, maxW) = wall.GetBounds();
-                        // If we are falling onto a platform (feet roughly at top)
-                        if (Owner.Position.Y >= maxW.Y - 0.5f)
+                        if (Vector3.Dot(hitNormal, Vector3.UnitY) >= slopeMaxCos)
                         {
-                            Owner.Position = new Vector3(
-                                Owner.Position.X,
-                                maxW.Y,
-                                Owner.Position.Z
-                            );
-                            VerticalVelocity = 0;
-                            IsGrounded = true;
+                            bestY = MathF.Max(bestY, hitPoint.Y);
                         }
+                    }
+                }
+
+                if (bestY > float.MinValue)
+                {
+                    float predictedY = Owner.Position.Y + VerticalVelocity * deltaTime;
+                    // Snap if on/above ground and descending
+                    if (predictedY <= bestY + 0.05f)
+                    {
+                        Owner.Position = new Vector3(Owner.Position.X, bestY, Owner.Position.Z);
+                        VerticalVelocity = Math.Max(0, VerticalVelocity);
+                        IsGrounded = true;
                     }
                 }
             }
 
-            // 2. Horizontal Movement
-            Vector3 forward = Vector3.Normalize(new Vector3(MathF.Sin(yaw), 0, MathF.Cos(yaw)));
-            Vector3 right = Vector3.Normalize(Vector3.Cross(forward, new Vector3(0, 1, 0)));
-
-            Vector3 moveDirection = Vector3.Zero;
-            if (Raylib.IsKeyDown(KeyboardKey.W))
-                moveDirection += forward;
-            if (Raylib.IsKeyDown(KeyboardKey.S))
-                moveDirection -= forward;
-            if (Raylib.IsKeyDown(KeyboardKey.A))
-                moveDirection -= right;
-            if (Raylib.IsKeyDown(KeyboardKey.D))
-                moveDirection += right;
-
-            if (moveDirection != Vector3.Zero)
+            // Apply vertical motion (remaining fall)
+            if (!IsGrounded)
             {
-                moveDirection = Vector3.Normalize(moveDirection);
-                Vector3 newPosition = Owner.Position + moveDirection * MoveSpeed * deltaTime;
+                Owner.Position += new Vector3(0, VerticalVelocity * deltaTime, 0);
+            }
 
-                // Check collision with walls using proper AABB collision
+            // Horizontal move + slide
+            if (moveDir != Vector3.Zero)
+            {
+                Vector3 original = Owner.Position;
+                Vector3 target = original + moveDir * MoveSpeed * deltaTime;
+
                 if (playerCollider != null && WallColliders != null)
                 {
-                    Vector3 originalPosition = Owner.Position;
-                    Owner.Position = newPosition;
+                    Owner.Position = target;
+                    bool fullHit = Collides(playerCollider, WallColliders);
 
-                    // Check if new position collides with any wall
-                    bool collided = false;
-                    foreach (var wall in WallColliders)
+                    if (fullHit)
                     {
-                        if (wall != null && playerCollider.CheckCollision(wall))
-                        {
-                            // Ignore if we are standing on top of this wall (it's a floor)
-                            var (minW, maxW) = wall.GetBounds();
-                            if (originalPosition.Y >= maxW.Y - 0.01f)
-                            {
-                                continue;
-                            }
+                        Owner.Position = original;
 
-                            collided = true;
-                            break;
-                        }
-                    }
+                        Vector3 xPos = new Vector3(target.X, original.Y, original.Z);
+                        Owner.Position = xPos;
+                        bool xHit = Collides(playerCollider, WallColliders);
 
-                    // If collision detected, try sliding along walls
-                    if (collided)
-                    {
-                        Owner.Position = originalPosition;
+                        Vector3 zPos = new Vector3(original.X, original.Y, target.Z);
+                        Owner.Position = zPos;
+                        bool zHit = Collides(playerCollider, WallColliders);
 
-                        // Try X-axis only movement
-                        Vector3 xOnlyMove =
-                            originalPosition
-                            + new Vector3(moveDirection.X * MoveSpeed * deltaTime, 0, 0);
-                        Owner.Position = xOnlyMove;
-                        bool xCollides = false;
-                        foreach (var wall in WallColliders)
-                        {
-                            if (wall != null && playerCollider.CheckCollision(wall))
-                            {
-                                var (minW, maxW) = wall.GetBounds();
-                                if (originalPosition.Y >= maxW.Y - 0.01f)
-                                    continue;
-                                xCollides = true;
-                                break;
-                            }
-                        }
-
-                        if (xCollides)
-                        {
-                            // Try Z-axis only movement
-                            Owner.Position = originalPosition;
-                            Vector3 zOnlyMove =
-                                originalPosition
-                                + new Vector3(0, 0, moveDirection.Z * MoveSpeed * deltaTime);
-                            Owner.Position = zOnlyMove;
-                            bool zCollides = false;
-                            foreach (var wall in WallColliders)
-                            {
-                                if (wall != null && playerCollider.CheckCollision(wall))
-                                {
-                                    var (minW, maxW) = wall.GetBounds();
-                                    if (originalPosition.Y >= maxW.Y - 0.01f)
-                                        continue;
-                                    zCollides = true;
-                                    break;
-                                }
-                            }
-
-                            // If both axes collide, stay at original position
-                            if (zCollides)
-                            {
-                                Owner.Position = originalPosition;
-                            }
-                        }
+                        if (xHit && zHit)
+                            Owner.Position = original;
+                        else if (xHit)
+                            Owner.Position = zPos;
+                        else if (zHit)
+                            Owner.Position = xPos;
                     }
                 }
                 else
                 {
-                    // Fallback to simple boundary clamp if no colliders
-                    Owner.Position = newPosition;
-                    Owner.Position = new Vector3(
-                        Math.Clamp(
-                            Owner.Position.X,
-                            RoomCenter.X - Boundary,
-                            RoomCenter.X + Boundary
-                        ),
-                        Owner.Position.Y,
-                        Math.Clamp(
-                            Owner.Position.Z,
-                            RoomCenter.Z - Boundary,
-                            RoomCenter.Z + Boundary
-                        )
-                    );
+                    Owner.Position = target;
                 }
             }
+        }
+
+        private bool Collides(ColliderComponent self, List<ColliderComponent> walls)
+        {
+            // Position is snapped to floor, so we use it as feet reference
+            float feetY = self.Owner.Position.Y;
+            float stepHeight = 0.2f; // Tolerance for floor/steps
+
+            foreach (var w in walls)
+            {
+                if (w != null && self.CheckCollision(w))
+                {
+                    var (minW, maxW) = w.GetBounds();
+
+                    // Ignore if it's a floor (top is at or below our feet + step tolerance)
+                    if (maxW.Y <= feetY + stepHeight)
+                        continue;
+
+                    return true;
+                }
+            }
+            return false;
         }
 
         public Vector3 GetLookDirection()

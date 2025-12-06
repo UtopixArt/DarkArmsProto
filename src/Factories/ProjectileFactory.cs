@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using DarkArmsProto.Builders;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
 using DarkArmsProto.Data;
@@ -12,7 +13,7 @@ namespace DarkArmsProto.Factories
     /// </summary>
     public static class ProjectileFactory
     {
-        private static Random random = new();
+        private static readonly Random random = new();
 
         /// <summary>
         /// Create a single projectile from projectile data
@@ -22,11 +23,11 @@ namespace DarkArmsProto.Factories
             Vector3 direction,
             float baseDamage,
             ProjectileData data,
-            bool isEnemyProjectile = false
+            bool isEnemyProjectile = false,
+            Action<Vector3, float, float>? explosionCallback = null,
+            Action<float>? healCallback = null
         )
         {
-            var go = new GameObject(position);
-
             // Apply spread to direction
             Vector3 finalDir = direction;
             if (data.Spread > 0)
@@ -38,39 +39,40 @@ namespace DarkArmsProto.Factories
                 finalDir = Vector3.Normalize(finalDir);
             }
 
-            // Projectile component
-            var projComp = new ProjectileComponent
-            {
-                Velocity = finalDir * data.Speed,
-                Damage = baseDamage * data.DamagePerProjectile,
-                Piercing = data.Piercing,
-                Lifesteal = data.Lifesteal,
-                Homing = data.Homing,
-                Explosive = data.Explosive,
-                ExplosionRadius = data.ExplosionRadius,
-                IsEnemyProjectile = isEnemyProjectile,
-            };
-            go.AddComponent(projComp);
+            var builder = new ProjectileBuilder()
+                .AtPosition(position)
+                .WithDirection(finalDir, data.Speed)
+                .WithDamage(baseDamage * data.DamagePerProjectile)
+                .WithSize(data.Size)
+                .WithColor(data.GetColor());
 
-            // Mesh renderer
-            var meshComp = new MeshRendererComponent
+            if (isEnemyProjectile)
             {
-                MeshType = MeshType.Sphere,
-                Color = data.GetColor(),
-                Scale = new Vector3(data.Size),
-            };
-            go.AddComponent(meshComp);
+                builder.AsEnemyProjectile();
+            }
 
-            // Collider
-            var colComp = new ColliderComponent
+            // Add behaviors based on data
+            if (data.Homing)
             {
-                Size = new Vector3(data.Size, data.Size, data.Size),
-                IsTrigger = true,
-                ShowDebug = false,
-            };
-            go.AddComponent(colComp);
+                builder.WithHoming();
+            }
 
-            return go;
+            if (data.Piercing)
+            {
+                builder.WithPiercing();
+            }
+
+            if (data.Explosive)
+            {
+                builder.WithExplosion(data.ExplosionRadius, 1.0f, explosionCallback);
+            }
+
+            if (data.Lifesteal)
+            {
+                builder.WithLifesteal(0.3f, healCallback);
+            }
+
+            return builder.Build();
         }
 
         /// <summary>
@@ -80,7 +82,9 @@ namespace DarkArmsProto.Factories
             Vector3 position,
             Vector3 direction,
             float baseDamage,
-            WeaponData weaponData
+            WeaponData weaponData,
+            Action<Vector3, float, float>? explosionCallback = null,
+            Action<float>? healCallback = null
         )
         {
             var projectiles = new System.Collections.Generic.List<GameObject>();
@@ -103,9 +107,11 @@ namespace DarkArmsProto.Factories
                     var projectile = CreateProjectile(
                         position,
                         spreadDir,
-                        baseDamage * weaponData.DamageMultiplier,
+                        baseDamage,
                         projData,
-                        false
+                        false,
+                        explosionCallback,
+                        healCallback
                     );
 
                     projectiles.Add(projectile);
@@ -116,28 +122,34 @@ namespace DarkArmsProto.Factories
         }
 
         /// <summary>
-        /// Create an enemy projectile
+        /// Create a projectile for an enemy
         /// </summary>
         public static GameObject CreateEnemyProjectile(
             Vector3 position,
             Vector3 direction,
             float damage,
-            SoulType soulType
+            SoulType type
         )
         {
-            // Enemy projectile data (could be moved to JSON too)
-            var data = new ProjectileData
-            {
-                Speed = soulType == SoulType.Undead ? 12f : 20f,
-                Size = soulType == SoulType.Undead ? 0.3f : 0.4f,
-                Color = soulType switch
-                {
-                    SoulType.Undead => [0, 255, 0, 255],
-                    _ => [255, 0, 0, 255],
-                },
-            };
+            float speed = 20.0f;
+            Raylib_cs.Color color = Raylib_cs.Color.Red;
+            float size = 0.4f;
 
-            return CreateProjectile(position, direction, damage, data, isEnemyProjectile: true);
+            if (type == SoulType.Undead)
+            {
+                speed = 12.0f; // Slower poison projectile
+                color = Raylib_cs.Color.Green;
+                size = 0.3f;
+            }
+
+            return new ProjectileBuilder()
+                .AtPosition(position)
+                .WithDirection(direction, speed)
+                .WithDamage(damage)
+                .WithSize(size)
+                .WithColor(color)
+                .AsEnemyProjectile()
+                .Build();
         }
     }
 }

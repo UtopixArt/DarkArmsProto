@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text.Json;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
+using DarkArmsProto.Factories;
 using DarkArmsProto.VFX;
 
 namespace DarkArmsProto.World
@@ -194,7 +195,7 @@ namespace DarkArmsProto.World
 
         public void SpawnEnemiesInRoom(
             Room room,
-            EnemySpawner spawner,
+            EnemyFactory spawner,
             Action<Vector3, Vector3, float, SoulType> onProjectileSpawn
         )
         {
@@ -361,7 +362,7 @@ namespace DarkArmsProto.World
         }
 
         public void InitializeRooms(
-            EnemySpawner spawner,
+            EnemyFactory spawner,
             Action<Vector3, Vector3, float, SoulType> onProjectileSpawn
         )
         {

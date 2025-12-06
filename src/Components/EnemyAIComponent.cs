@@ -36,35 +36,6 @@ namespace DarkArmsProto.Components
             this.Type = type;
             this.Speed = speed;
 
-            // Customize behavior based on type
-            switch (type)
-            {
-                case SoulType.Beast: // Fast, melee rusher
-                    AttackRange = 1.5f;
-                    DetectionRange = 20.0f;
-                    AttackCooldown = 0.8f;
-                    Damage = 15f;
-                    IsFlying = false;
-                    IsRanged = false;
-                    break;
-                case SoulType.Undead: // Slow, standard
-                    AttackRange = 10.0f; // Increased range for poison throw
-                    DetectionRange = 15.0f;
-                    AttackCooldown = 2.0f;
-                    Damage = 10f;
-                    IsFlying = false;
-                    IsRanged = true; // Now ranged
-                    break;
-                case SoulType.Demon: // Flying, Ranged, Strong
-                    AttackRange = 15.0f; // Increased range
-                    DetectionRange = 35.0f; // Increased detection
-                    AttackCooldown = 1.0f; // Much faster shooting (was 2.5f)
-                    Damage = 25f; // Increased damage
-                    IsFlying = true;
-                    IsRanged = true;
-                    break;
-            }
-
             CurrentState = new IdleState();
             CurrentState.Enter(this);
         }

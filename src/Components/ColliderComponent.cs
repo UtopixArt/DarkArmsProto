@@ -87,5 +87,90 @@ namespace DarkArmsProto.Components
             Color debugColor = IsTrigger ? new Color(0, 255, 0, 150) : new Color(255, 0, 0, 150);
             Raylib.DrawCubeWiresV(center, fullSize, debugColor);
         }
+
+        public bool Raycast(
+            Vector3 origin,
+            Vector3 direction,
+            float maxDistance,
+            out float hitDistance,
+            out Vector3 hitNormal,
+            out Vector3 hitPoint
+        )
+        {
+            hitDistance = float.MaxValue;
+            hitNormal = Vector3.Zero;
+            hitPoint = Vector3.Zero;
+
+            var (min, max) = GetBounds();
+            const float eps = 1e-6f;
+            float tMin = 0f,
+                tMax = maxDistance;
+            int hitAxis = -1,
+                hitSide = 0;
+
+            for (int axis = 0; axis < 3; axis++)
+            {
+                float o =
+                    axis == 0 ? origin.X
+                    : axis == 1 ? origin.Y
+                    : origin.Z;
+                float d =
+                    axis == 0 ? direction.X
+                    : axis == 1 ? direction.Y
+                    : direction.Z;
+                float mn =
+                    axis == 0 ? min.X
+                    : axis == 1 ? min.Y
+                    : min.Z;
+                float mx =
+                    axis == 0 ? max.X
+                    : axis == 1 ? max.Y
+                    : max.Z;
+
+                if (MathF.Abs(d) < eps)
+                {
+                    if (o < mn || o > mx)
+                        return false;
+                    continue;
+                }
+
+                float invD = 1f / d;
+                float t1 = (mn - o) * invD;
+                float t2 = (mx - o) * invD;
+                int side = -1; // Default to hitting Min face (Normal -1)
+
+                if (t1 > t2)
+                {
+                    (t1, t2) = (t2, t1);
+                    side = 1; // Hitting Max face (Normal +1)
+                }
+
+                float prev = tMin;
+                tMin = MathF.Max(tMin, t1);
+                tMax = MathF.Min(tMax, t2);
+                if (tMax < tMin)
+                    return false;
+                if (tMin != prev)
+                {
+                    hitAxis = axis;
+                    hitSide = side;
+                }
+            }
+
+            float tHit = tMin >= 0f ? tMin : tMax;
+            if (tHit < 0f || tHit > maxDistance)
+                return false;
+
+            hitDistance = tHit;
+            hitPoint = origin + direction * tHit;
+            hitNormal = hitAxis switch
+            {
+                0 => hitSide < 0 ? -Vector3.UnitX : Vector3.UnitX,
+                1 => hitSide < 0 ? -Vector3.UnitY : Vector3.UnitY,
+                2 => hitSide < 0 ? -Vector3.UnitZ : Vector3.UnitZ,
+                _ => Vector3.Zero,
+            };
+            return true;
+        }
     }
 }

@@ -119,17 +119,6 @@ namespace DarkArmsProto.Systems
 
                         if (collision)
                         {
-                            if (projComp.Explosive)
-                            {
-                                TriggerExplosion(
-                                    proj.Position,
-                                    projComp.ExplosionRadius,
-                                    projComp.Damage
-                                );
-                                hit = true;
-                                break;
-                            }
-
                             var health = enemy.GetComponent<HealthComponent>();
                             if (health != null)
                             {
@@ -156,16 +145,6 @@ namespace DarkArmsProto.Systems
                                     }
                                 );
 
-                                // Apply lifesteal
-                                if (projComp.Lifesteal)
-                                {
-                                    var playerHealth = player.GetComponent<HealthComponent>();
-                                    if (playerHealth != null)
-                                    {
-                                        playerHealth.Heal(projComp.Damage * 0.3f);
-                                    }
-                                }
-
                                 // Check if enemy died
                                 if (health.IsDead)
                                 {
@@ -173,7 +152,10 @@ namespace DarkArmsProto.Systems
                                 }
                             }
 
-                            if (!projComp.Piercing)
+                            // Handle behaviors (Explosion, Lifesteal, Piercing check)
+                            bool shouldDestroy = projComp.OnHit(enemy, proj.Position);
+
+                            if (shouldDestroy)
                             {
                                 hit = true;
                                 break;
