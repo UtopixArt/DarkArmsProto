@@ -10,6 +10,10 @@ namespace DarkArmsProto.Components
     {
         public float MoveSpeed { get; set; } = 10f;
         public float MouseSensitivity { get; set; } = 0.003f;
+        public float Gravity { get; set; } = 30f;
+        public float JumpForce { get; set; } = 12f;
+        public float VerticalVelocity { get; set; } = 0f;
+        public bool IsGrounded { get; private set; } = false;
 
         public Vector3 RoomCenter { get; set; }
         public float Boundary { get; set; } = 9f;
@@ -45,6 +49,51 @@ namespace DarkArmsProto.Components
 
         private void HandleMovement(float deltaTime)
         {
+            // 1. Vertical Movement & Gravity
+            if (IsGrounded && Raylib.IsKeyPressed(KeyboardKey.Space))
+            {
+                VerticalVelocity = JumpForce;
+                IsGrounded = false;
+            }
+
+            VerticalVelocity -= Gravity * deltaTime;
+            Vector3 verticalMove = new Vector3(0, VerticalVelocity * deltaTime, 0);
+            Owner.Position += verticalMove;
+
+            IsGrounded = false;
+            var playerCollider = Owner.GetComponent<ColliderComponent>();
+
+            // Floor Check
+            if (Owner.Position.Y <= 0)
+            {
+                Owner.Position = new Vector3(Owner.Position.X, 0, Owner.Position.Z);
+                VerticalVelocity = 0;
+                IsGrounded = true;
+            }
+            // Platform Check (only if falling)
+            else if (VerticalVelocity <= 0 && playerCollider != null && WallColliders != null)
+            {
+                foreach (var wall in WallColliders)
+                {
+                    if (playerCollider.CheckCollision(wall))
+                    {
+                        var (minW, maxW) = wall.GetBounds();
+                        // If we are falling onto a platform (feet roughly at top)
+                        if (Owner.Position.Y >= maxW.Y - 0.5f)
+                        {
+                            Owner.Position = new Vector3(
+                                Owner.Position.X,
+                                maxW.Y,
+                                Owner.Position.Z
+                            );
+                            VerticalVelocity = 0;
+                            IsGrounded = true;
+                        }
+                    }
+                }
+            }
+
+            // 2. Horizontal Movement
             Vector3 forward = Vector3.Normalize(new Vector3(MathF.Sin(yaw), 0, MathF.Cos(yaw)));
             Vector3 right = Vector3.Normalize(Vector3.Cross(forward, new Vector3(0, 1, 0)));
 
@@ -64,7 +113,6 @@ namespace DarkArmsProto.Components
                 Vector3 newPosition = Owner.Position + moveDirection * MoveSpeed * deltaTime;
 
                 // Check collision with walls using proper AABB collision
-                var playerCollider = Owner.GetComponent<ColliderComponent>();
                 if (playerCollider != null && WallColliders != null)
                 {
                     Vector3 originalPosition = Owner.Position;
@@ -76,6 +124,13 @@ namespace DarkArmsProto.Components
                     {
                         if (wall != null && playerCollider.CheckCollision(wall))
                         {
+                            // Ignore if we are standing on top of this wall (it's a floor)
+                            var (minW, maxW) = wall.GetBounds();
+                            if (originalPosition.Y >= maxW.Y - 0.01f)
+                            {
+                                continue;
+                            }
+
                             collided = true;
                             break;
                         }
@@ -96,6 +151,9 @@ namespace DarkArmsProto.Components
                         {
                             if (wall != null && playerCollider.CheckCollision(wall))
                             {
+                                var (minW, maxW) = wall.GetBounds();
+                                if (originalPosition.Y >= maxW.Y - 0.01f)
+                                    continue;
                                 xCollides = true;
                                 break;
                             }
@@ -114,6 +172,9 @@ namespace DarkArmsProto.Components
                             {
                                 if (wall != null && playerCollider.CheckCollision(wall))
                                 {
+                                    var (minW, maxW) = wall.GetBounds();
+                                    if (originalPosition.Y >= maxW.Y - 0.01f)
+                                        continue;
                                     zCollides = true;
                                     break;
                                 }

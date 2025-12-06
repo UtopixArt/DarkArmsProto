@@ -8,7 +8,7 @@ namespace DarkArmsProto.Components
     public class CameraComponent : Component
     {
         public Camera3D Camera;
-        public Vector3 Offset { get; set; } = new Vector3(0, 0.8f, 0); // Lowered camera height
+        public Vector3 Offset { get; set; } = new Vector3(0, 1.7f, 0); // Standard eye height
 
         public override void Start()
         {

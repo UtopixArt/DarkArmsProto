@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
+using DarkArmsProto.VFX;
 
 namespace DarkArmsProto.World
 {
@@ -11,6 +12,7 @@ namespace DarkArmsProto.World
         private Dictionary<Vector2, Room> rooms;
         private Room? currentRoom;
         private Random random;
+        private LightManager? lightManager;
 
         public Room CurrentRoom => currentRoom!;
 
@@ -20,6 +22,11 @@ namespace DarkArmsProto.World
         {
             rooms = new Dictionary<Vector2, Room>();
             random = new Random();
+        }
+
+        public void SetLightManager(LightManager lm)
+        {
+            this.lightManager = lm;
         }
 
         public void GenerateDungeon()
@@ -145,7 +152,11 @@ namespace DarkArmsProto.World
             }
         }
 
-        public void SpawnEnemiesInRoom(Room room, EnemySpawner spawner)
+        public void SpawnEnemiesInRoom(
+            Room room,
+            EnemySpawner spawner,
+            Action<Vector3, Vector3, float> onProjectileSpawn
+        )
         {
             if (
                 room.Type == RoomType.Start
@@ -158,7 +169,7 @@ namespace DarkArmsProto.World
                 room.Type == RoomType.Boss
                     ? GameConfig.BossRoomEnemyCount
                     : random.Next(GameConfig.MinEnemiesPerRoom, GameConfig.MaxEnemiesPerRoom + 1);
-            room.SpawnEnemies(spawner, enemyCount);
+            room.SpawnEnemies(spawner, enemyCount, onProjectileSpawn);
         }
 
         public void Update(float deltaTime, GameObject player)
@@ -167,7 +178,7 @@ namespace DarkArmsProto.World
                 return;
 
             // Update current room enemies
-            currentRoom.UpdateEnemies(deltaTime, player.Position);
+            currentRoom.UpdateEnemies(deltaTime, player);
 
             // Check for room transitions
             CheckRoomTransition(player);
@@ -203,6 +214,22 @@ namespace DarkArmsProto.World
             // Enter new room
             currentRoom = newRoom;
             currentRoom.OnEnter();
+
+            // Update Lights
+            if (lightManager != null)
+            {
+                lightManager.ClearStaticLights();
+                foreach (var light in currentRoom.RoomLights)
+                {
+                    lightManager.AddStaticLight(
+                        light.Position,
+                        light.Color,
+                        light.Intensity,
+                        light.Radius,
+                        light.Flicker
+                    );
+                }
+            }
 
             // Determine arrival door (opposite of the one we entered)
             Direction arrivalDirection = entryDirection switch
@@ -268,6 +295,7 @@ namespace DarkArmsProto.World
             // Render current room
             currentRoom.RenderFloor();
             currentRoom.RenderWalls();
+            currentRoom.RenderInterior();
             currentRoom.RenderDoors();
 
             // Render current room enemies
@@ -292,13 +320,16 @@ namespace DarkArmsProto.World
             return currentRoom?.Enemies ?? new List<GameObject>();
         }
 
-        public void InitializeRooms(EnemySpawner spawner)
+        public void InitializeRooms(
+            EnemySpawner spawner,
+            Action<Vector3, Vector3, float> onProjectileSpawn
+        )
         {
             foreach (var room in rooms.Values)
             {
                 if (room.Type != RoomType.Start)
                 {
-                    SpawnEnemiesInRoom(room, spawner);
+                    SpawnEnemiesInRoom(room, spawner, onProjectileSpawn);
                 }
             }
         }

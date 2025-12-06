@@ -63,71 +63,106 @@ namespace DarkArmsProto.Systems
 
                 bool hit = false;
 
-                for (int j = enemies.Count - 1; j >= 0; j--)
+                if (projComp.IsEnemyProjectile)
                 {
-                    var enemy = enemies[j];
-                    var enemyCollider = enemy.GetComponent<ColliderComponent>();
-
-                    // Check collision using box collider if available, otherwise fallback to distance
+                    // Check collision with player
+                    var playerCollider = player.GetComponent<ColliderComponent>();
                     bool collision = false;
-                    if (enemyCollider != null)
+
+                    if (playerCollider != null)
                     {
-                        collision = enemyCollider.CheckPointCollision(proj.Position);
+                        collision = playerCollider.CheckPointCollision(proj.Position);
                     }
                     else
                     {
-                        collision = Vector3.Distance(proj.Position, enemy.Position) < 1.0f;
+                        collision = Vector3.Distance(proj.Position, player.Position) < 1.0f;
                     }
 
                     if (collision)
                     {
-                        var health = enemy.GetComponent<HealthComponent>();
+                        var health = player.GetComponent<HealthComponent>();
                         if (health != null)
                         {
                             health.TakeDamage(projComp.Damage);
-
-                            // Play hit sound
-                            AudioManager.Instance.PlaySound(SoundType.Hit, 0.2f);
-
-                            // Impact particles
-                            var projMesh = proj.GetComponent<MeshRendererComponent>();
-                            Color impactColor = projMesh != null ? projMesh.Color : Color.White;
-                            particleManager.SpawnImpact(proj.Position, impactColor, 10); // Increased from 6 to 10
-
-                            // Impact light
-                            lightManager.AddImpactLight(proj.Position, impactColor);
-
-                            // Add damage number
-                            damageNumbers.Add(
-                                new DamageNumber
-                                {
-                                    Position = enemy.Position,
-                                    Damage = projComp.Damage,
-                                    Lifetime = 1f,
-                                }
-                            );
-
-                            // Apply lifesteal
-                            if (projComp.Lifesteal)
-                            {
-                                var playerHealth = player.GetComponent<HealthComponent>();
-                                if (playerHealth != null)
-                                {
-                                    playerHealth.Heal(projComp.Damage * 0.3f);
-                                }
-                            }
-
-                            // Check if enemy died
-                            if (health.IsDead)
-                            {
-                                HandleEnemyDeath(enemy, enemies, j);
-                            }
                         }
 
-                        if (!projComp.Piercing)
+                        // Impact particles
+                        var projMesh = proj.GetComponent<MeshRendererComponent>();
+                        Color impactColor = projMesh != null ? projMesh.Color : Color.Red;
+                        particleManager.SpawnImpact(proj.Position, impactColor, 5);
+                        lightManager.AddImpactLight(proj.Position, impactColor);
+
+                        hit = true;
+                    }
+                }
+                else
+                {
+                    for (int j = enemies.Count - 1; j >= 0; j--)
+                    {
+                        var enemy = enemies[j];
+                        var enemyCollider = enemy.GetComponent<ColliderComponent>();
+
+                        // Check collision using box collider if available, otherwise fallback to distance
+                        bool collision = false;
+                        if (enemyCollider != null)
                         {
-                            hit = true;
-                            break;
+                            collision = enemyCollider.CheckPointCollision(proj.Position);
+                        }
+                        else
+                        {
+                            collision = Vector3.Distance(proj.Position, enemy.Position) < 1.0f;
+                        }
+
+                        if (collision)
+                        {
+                            var health = enemy.GetComponent<HealthComponent>();
+                            if (health != null)
+                            {
+                                health.TakeDamage(projComp.Damage);
+
+                                // Play hit sound
+                                AudioManager.Instance.PlaySound(SoundType.Hit, 0.2f);
+
+                                // Impact particles
+                                var projMesh = proj.GetComponent<MeshRendererComponent>();
+                                Color impactColor = projMesh != null ? projMesh.Color : Color.White;
+                                particleManager.SpawnImpact(proj.Position, impactColor, 10); // Increased from 6 to 10
+
+                                // Impact light
+                                lightManager.AddImpactLight(proj.Position, impactColor);
+
+                                // Add damage number
+                                damageNumbers.Add(
+                                    new DamageNumber
+                                    {
+                                        Position = enemy.Position,
+                                        Damage = projComp.Damage,
+                                        Lifetime = 1f,
+                                    }
+                                );
+
+                                // Apply lifesteal
+                                if (projComp.Lifesteal)
+                                {
+                                    var playerHealth = player.GetComponent<HealthComponent>();
+                                    if (playerHealth != null)
+                                    {
+                                        playerHealth.Heal(projComp.Damage * 0.3f);
+                                    }
+                                }
+
+                                // Check if enemy died
+                                if (health.IsDead)
+                                {
+                                    HandleEnemyDeath(enemy, enemies, j);
+                                }
+                            }
+
+                            if (!projComp.Piercing)
+                            {
+                                hit = true;
+                                break;
+                            }
                         }
                     }
                 }

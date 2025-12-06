@@ -15,6 +15,7 @@ namespace DarkArmsProto.Systems
         private ParticleManager particleManager;
         private LightManager lightManager;
         private List<GameObject> enemies;
+        private List<ColliderComponent> walls;
 
         public List<GameObject> Projectiles => projectiles;
 
@@ -29,6 +30,7 @@ namespace DarkArmsProto.Systems
             this.particleManager = particleManager;
             this.lightManager = lightManager;
             this.enemies = new List<GameObject>();
+            this.walls = new List<ColliderComponent>();
         }
 
         /// <summary>
@@ -38,6 +40,11 @@ namespace DarkArmsProto.Systems
         {
             this.enemies = enemies;
             ProjectileComponent.Enemies = enemies;
+        }
+
+        public void SetWalls(List<ColliderComponent> walls)
+        {
+            this.walls = walls;
         }
 
         /// <summary>
@@ -86,13 +93,44 @@ namespace DarkArmsProto.Systems
                                 ) * 0.5f;
                         }
 
-                        particleManager.SpawnImpact(muzzlePos, muzzleColor, 5); // Reduced from 15 to 5
+                        particleManager.SpawnImpact(muzzlePos, muzzleColor, 2); // Reduced from 15 to 5
 
                         // Muzzle flash light
                         lightManager.AddMuzzleFlash(muzzlePos, muzzleColor);
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Spawns a projectile fired by an enemy
+        /// </summary>
+        public void SpawnEnemyProjectile(Vector3 position, Vector3 direction, float damage)
+        {
+            var projectile = new GameObject(position);
+
+            // Projectile Component
+            var projComp = new ProjectileComponent
+            {
+                Velocity = Vector3.Normalize(direction) * 20.0f, // Faster (was 15.0f)
+                Damage = damage,
+                Lifetime = 5.0f,
+                IsEnemyProjectile = true,
+            };
+            projectile.AddComponent(projComp);
+
+            // Visuals
+            projectile.AddComponent(
+                new MeshRendererComponent(Color.Red, new Vector3(0.4f, 0.4f, 0.4f)) // Slightly larger
+            );
+
+            // Light
+            lightManager.AddMuzzleFlash(position, Color.Red);
+
+            projectiles.Add(projectile);
+
+            // Sound
+            AudioManager.Instance.PlaySound(SoundType.Shoot, 0.2f);
         }
 
         /// <summary>
@@ -107,6 +145,36 @@ namespace DarkArmsProto.Systems
 
                 var projComp = proj.GetComponent<ProjectileComponent>();
                 if (projComp == null || !proj.IsActive)
+                {
+                    projectiles.RemoveAt(i);
+                    continue;
+                }
+
+                // Check wall collisions
+                if (walls != null)
+                {
+                    foreach (var wall in walls)
+                    {
+                        if (wall.CheckPointCollision(proj.Position))
+                        {
+                            // Hit wall
+                            proj.IsActive = false;
+
+                            // Visuals
+                            var projMesh = proj.GetComponent<MeshRendererComponent>();
+                            Color impactColor = projMesh != null ? projMesh.Color : Color.Yellow;
+                            particleManager.SpawnImpact(proj.Position, impactColor, 5);
+                            lightManager.AddImpactLight(proj.Position, impactColor);
+
+                            // Sound
+                            AudioManager.Instance.PlaySound(SoundType.Hit, 0.1f);
+
+                            break;
+                        }
+                    }
+                }
+
+                if (!proj.IsActive)
                 {
                     projectiles.RemoveAt(i);
                 }

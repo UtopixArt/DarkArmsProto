@@ -10,6 +10,7 @@ namespace DarkArmsProto.Components
         public float HitFlashTime { get; set; }
 
         public bool IsDead => CurrentHealth <= 0;
+        public event Action<float>? OnDamageTaken;
 
         public HealthComponent() { }
 
@@ -23,6 +24,7 @@ namespace DarkArmsProto.Components
         {
             CurrentHealth = Math.Max(0, CurrentHealth - amount);
             HitFlashTime = GameConfig.HitFlashDuration;
+            OnDamageTaken?.Invoke(amount);
         }
 
         public void Heal(float amount)

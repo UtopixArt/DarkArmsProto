@@ -15,6 +15,7 @@ namespace DarkArmsProto.Components
         public bool Homing { get; set; }
         public float HomingStrength { get; set; } = 0.1f;
         public float HomingRange { get; set; } = 20f;
+        public bool IsEnemyProjectile { get; set; } = false;
 
         public static List<GameObject> Enemies { get; set; } = new List<GameObject>();
 

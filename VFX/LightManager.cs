@@ -14,6 +14,7 @@ namespace DarkArmsProto.VFX
         public float Lifetime;
         public float MaxLifetime;
         public bool Flicker;
+        public bool IsStatic;
     }
 
     public class LightManager
@@ -49,7 +50,7 @@ namespace DarkArmsProto.VFX
                 ambientLoc = Raylib.GetShaderLocation(LightingShader, "ambient");
 
                 // Set ambient light
-                float[] ambient = new float[] { 0.2f, 0.2f, 0.2f, 1.0f };
+                float[] ambient = new float[] { 0.05f, 0.05f, 0.05f, 1.0f }; // Darker ambient (was 0.2)
                 Raylib.SetShaderValue(
                     LightingShader,
                     ambientLoc,
@@ -118,7 +119,10 @@ namespace DarkArmsProto.VFX
                 if (i < lights.Count)
                 {
                     var light = lights[i];
-                    float intensity = light.Intensity * (light.Lifetime / light.MaxLifetime);
+                    float intensity = light.Intensity;
+
+                    if (!light.IsStatic)
+                        intensity *= (light.Lifetime / light.MaxLifetime);
 
                     if (light.Flicker)
                         intensity *= 0.8f + (float)random.NextDouble() * 0.4f;
@@ -207,8 +211,40 @@ namespace DarkArmsProto.VFX
                     Lifetime = lifetime,
                     MaxLifetime = lifetime,
                     Flicker = flicker,
+                    IsStatic = false,
                 }
             );
+        }
+
+        public void AddStaticLight(
+            Vector3 position,
+            Color color,
+            float intensity,
+            float radius,
+            bool flicker = false
+        )
+        {
+            if (lights.Count >= MAX_LIGHTS - 1)
+                return;
+
+            lights.Add(
+                new DynamicLight
+                {
+                    Position = position,
+                    Color = color,
+                    Intensity = intensity,
+                    Radius = radius,
+                    Lifetime = 1.0f,
+                    MaxLifetime = 1.0f,
+                    Flicker = flicker,
+                    IsStatic = true,
+                }
+            );
+        }
+
+        public void ClearStaticLights()
+        {
+            lights.RemoveAll(l => l.IsStatic);
         }
 
         /// <summary>
@@ -240,15 +276,18 @@ namespace DarkArmsProto.VFX
             for (int i = lights.Count - 1; i >= 0; i--)
             {
                 var light = lights[i];
-                light.Lifetime -= deltaTime;
+                if (!light.IsStatic)
+                {
+                    light.Lifetime -= deltaTime;
 
-                if (light.Lifetime <= 0)
-                {
-                    lights.RemoveAt(i);
-                }
-                else
-                {
-                    lights[i] = light;
+                    if (light.Lifetime <= 0)
+                    {
+                        lights.RemoveAt(i);
+                    }
+                    else
+                    {
+                        lights[i] = light;
+                    }
                 }
             }
         }
@@ -263,7 +302,7 @@ namespace DarkArmsProto.VFX
 
             foreach (var light in lights)
             {
-                float fade = light.Lifetime / light.MaxLifetime;
+                float fade = light.IsStatic ? 1.0f : (light.Lifetime / light.MaxLifetime);
                 float currentIntensity = light.Intensity * fade;
 
                 if (light.Flicker)
@@ -271,35 +310,40 @@ namespace DarkArmsProto.VFX
                     currentIntensity *= 0.7f + (float)random.NextDouble() * 0.6f;
                 }
 
-                // Core bright sphere
-                byte coreAlpha = (byte)(255 * fade * currentIntensity);
-                Color coreColor = new Color(
-                    Math.Min(255, (int)(light.Color.R * 1.5f)),
-                    Math.Min(255, (int)(light.Color.G * 1.5f)),
-                    Math.Min(255, (int)(light.Color.B * 1.5f)),
-                    coreAlpha
-                );
-                Raylib.DrawSphere(light.Position, 0.3f * currentIntensity, coreColor);
-
-                // Multiple glow layers for volumetric effect
-                for (int i = 1; i <= 8; i++)
+                // Core bright sphere (Only for non-static lights like projectiles/explosions)
+                /*
+                if (!light.IsStatic)
                 {
-                    float sizeMult = 1.0f + i * 0.5f;
-                    byte alpha = (byte)(180 * fade * currentIntensity / (i * 0.7f));
+                    byte coreAlpha = (byte)(255 * fade * currentIntensity);
+                    Color coreColor = new Color(
+                        Math.Min(255, (int)(light.Color.R * 1.5f)),
+                        Math.Min(255, (int)(light.Color.G * 1.5f)),
+                        Math.Min(255, (int)(light.Color.B * 1.5f)),
+                        coreAlpha
+                    );
+                    Raylib.DrawSphere(light.Position, 0.3f * currentIntensity, coreColor);
 
-                    if (alpha > 5) // Skip very transparent layers
+                    // Multiple glow layers for volumetric effect (Only for non-static)
+                    for (int i = 1; i <= 8; i++)
                     {
-                        Color glowColor = new Color(
-                            light.Color.R,
-                            light.Color.G,
-                            light.Color.B,
-                            alpha
-                        );
+                        float sizeMult = 1.0f + i * 0.5f;
+                        byte alpha = (byte)(180 * fade * currentIntensity / (i * 0.7f));
 
-                        float radius = light.Radius * currentIntensity * 0.15f * sizeMult;
-                        Raylib.DrawSphere(light.Position, radius, glowColor);
+                        if (alpha > 5) // Skip very transparent layers
+                        {
+                            Color glowColor = new Color(
+                                light.Color.R,
+                                light.Color.G,
+                                light.Color.B,
+                                alpha
+                            );
+
+                            float radius = light.Radius * currentIntensity * 0.15f * sizeMult;
+                            Raylib.DrawSphere(light.Position, radius, glowColor);
+                        }
                     }
                 }
+                */
             }
 
             // Reset to normal blending

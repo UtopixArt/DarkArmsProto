@@ -64,6 +64,17 @@ namespace DarkArmsProto
             healthComp.CurrentHealth = GameConfig.PlayerMaxHealth;
             player.AddComponent(healthComp);
 
+            // Handle player damage feedback
+            healthComp.OnDamageTaken += (amount) =>
+            {
+                // Play hit sound (maybe different for player?)
+                AudioManager.Instance.PlaySound(SoundType.Hit, 0.5f);
+
+                // Screen shake
+                var shake = player.GetComponent<ScreenShakeComponent>();
+                shake?.AddTrauma(0.5f);
+            };
+
             var colliderComp = new ColliderComponent();
             colliderComp.Size = new Vector3(
                 GameConfig.PlayerColliderWidth,
@@ -97,8 +108,16 @@ namespace DarkArmsProto
             projectileSystem = new ProjectileSystem(player, particleManager, lightManager);
             gameUI = new GameUI(player, roomManager);
 
+            roomManager.SetLightManager(lightManager);
+
             // Initialize rooms with enemies
-            roomManager.InitializeRooms(enemySpawner);
+            roomManager.InitializeRooms(
+                enemySpawner,
+                (pos, dir, dmg) =>
+                {
+                    projectileSystem.SpawnEnemyProjectile(pos, dir, dmg);
+                }
+            );
         }
 
         public void Update(float deltaTime)
@@ -122,6 +141,7 @@ namespace DarkArmsProto
             // Update enemies list for projectiles
             var enemies = roomManager.GetCurrentRoomEnemies();
             projectileSystem.SetEnemies(enemies);
+            projectileSystem.SetWalls(roomManager.CurrentRoom.WallColliders);
 
             // Handle shooting via ProjectileSystem
             projectileSystem.HandleShooting();

@@ -36,34 +36,58 @@ namespace DarkArmsProto
                 _ => Color.White,
             };
 
+            // Determine mesh size based on type
+            Vector3 meshSize;
+            Vector3 colliderSize;
+
+            if (type == SoulType.Demon)
+            {
+                // Small cube for flying demons
+                meshSize = new Vector3(
+                    GameConfig.DemonMeshSize,
+                    GameConfig.DemonMeshSize,
+                    GameConfig.DemonMeshSize
+                );
+                colliderSize = new Vector3(
+                    GameConfig.DemonColliderSize,
+                    GameConfig.DemonColliderSize,
+                    GameConfig.DemonColliderSize
+                );
+            }
+            else
+            {
+                // Standard tall enemy
+                meshSize = new Vector3(
+                    GameConfig.EnemyMeshWidth,
+                    GameConfig.EnemyMeshHeight,
+                    GameConfig.EnemyMeshDepth
+                );
+                colliderSize = new Vector3(
+                    GameConfig.EnemyColliderWidth,
+                    GameConfig.EnemyColliderHeight,
+                    GameConfig.EnemyColliderDepth
+                );
+            }
+
             // Ajout des composants
             go.AddComponent(new HealthComponent(hp));
-            go.AddComponent(new ChaseAIComponent(speed));
-            go.AddComponent(
-                new MeshRendererComponent(
-                    color,
-                    new Vector3(
-                        GameConfig.EnemyMeshWidth,
-                        GameConfig.EnemyMeshHeight,
-                        GameConfig.EnemyMeshDepth
-                    )
-                )
-            );
+            go.AddComponent(new EnemyAIComponent(type, speed));
+            go.AddComponent(new MeshRendererComponent(color, meshSize));
             go.AddComponent(new EnemyComponent(type)); // Pour savoir quelle âme donner
             go.AddComponent(
                 new HealthBarComponent(
-                    new Vector3(0, GameConfig.EnemyHealthBarOffsetY, 0),
+                    new Vector3(
+                        0,
+                        type == SoulType.Demon ? 1.5f : GameConfig.EnemyHealthBarOffsetY,
+                        0
+                    ),
                     new Vector2(GameConfig.EnemyHealthBarWidth, GameConfig.EnemyHealthBarHeight)
                 )
             );
 
             // Add box collider matching the mesh size
             var collider = new ColliderComponent();
-            collider.Size = new Vector3(
-                GameConfig.EnemyColliderWidth,
-                GameConfig.EnemyColliderHeight,
-                GameConfig.EnemyColliderDepth
-            );
+            collider.Size = colliderSize;
             go.AddComponent(collider);
 
             return go;

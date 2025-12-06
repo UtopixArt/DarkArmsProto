@@ -55,31 +55,31 @@ namespace DarkArmsProto
         public const float HomingRange = 15f; // Max distance to track enemies
 
         // Weapon-specific projectile stats
-        public const float BoneRevolverSpeed = 20f;
+        public const float BoneRevolverSpeed = 40f; // Was 20f
         public const float BoneRevolverSize = 0.5f;
 
-        public const float TendrilBurstSpeed = 15f;
+        public const float TendrilBurstSpeed = 30f; // Was 15f
         public const float TendrilBurstSize = 0.25f;
         public const float TendrilBurstSpread = 0.15f;
         public const int TendrilBurstPellets = 5;
         public const float TendrilBurstDamagePerPellet = 0.6f;
         public const float LifestealPercent = 0.3f;
 
-        public const float ParasiteSwarmSpeed = 18f;
+        public const float ParasiteSwarmSpeed = 35f; // Was 18f
         public const float ParasiteSwarmSize = 0.3f;
 
-        public const float FleshPistolSpeed = 15f;
+        public const float FleshPistolSpeed = 30f; // Was 15f
         public const float FleshPistolSize = 0.3f;
 
         // === ENEMY SETTINGS ===
         public const float BeastEnemyHealth = 50f; // Augmenté de 30 à 50
-        public const float BeastEnemySpeed = 4.5f; // Augmenté de 3 à 4.5
+        public const float BeastEnemySpeed = 8.0f; // Charge speed (was 4.5)
 
         public const float UndeadEnemyHealth = 80f; // Augmenté de 50 à 80
         public const float UndeadEnemySpeed = 3f; // Augmenté de 2 à 3
 
         public const float DemonEnemyHealth = 65f; // Augmenté de 40 à 65
-        public const float DemonEnemySpeed = 4f; // Augmenté de 2.5 à 4
+        public const float DemonEnemySpeed = 6f; // Faster flying (was 4)
 
         public const float EnemyTouchDamagePerSecond = 15f; // Augmenté de 10 à 15
         public const float EnemyCollisionRadius = 1.5f;
@@ -90,10 +90,15 @@ namespace DarkArmsProto
         public const float EnemyMeshHeight = 4.5f;
         public const float EnemyMeshDepth = 1.5f;
 
+        // Demon specific visual settings (Small Cube)
+        public const float DemonMeshSize = 1.2f;
+
         // Enemy collider (half-extents of mesh)
         public const float EnemyColliderWidth = 0.75f; // MeshWidth / 2
         public const float EnemyColliderHeight = 2.25f; // MeshHeight / 2
         public const float EnemyColliderDepth = 0.75f; // MeshDepth / 2
+
+        public const float DemonColliderSize = 0.6f; // DemonMeshSize / 2
 
         // Enemy health bar settings
         public const float EnemyHealthBarOffsetY = 2.5f;
@@ -113,6 +118,6 @@ namespace DarkArmsProto
 
         // === ROOM SETTINGS ===
         public const float RoomSize = 30f;
-        public const float WallHeight = 5f;
+        public const float WallHeight = 15f; // Increased from 5f to 15f for taller rooms
     }
 }
