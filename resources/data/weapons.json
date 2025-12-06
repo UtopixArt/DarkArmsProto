@@ -1,0 +1,352 @@
+{
+  "weapons": [
+    {
+      "id": "flesh_pistol",
+      "name": "Flesh Pistol",
+      "stage": 1,
+      "damage_multiplier": 1.0,
+      "fire_rate_multiplier": 1.0,
+      "projectiles": [
+        {
+          "count": 1,
+          "speed": 30.0,
+          "size": 0.3,
+          "color": [
+            255,
+            0,
+            255,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": false,
+          "homing": false,
+          "explosive": false,
+          "spread": 0.0
+        }
+      ]
+    },
+    {
+      "id": "bone_revolver",
+      "name": "Bone Revolver",
+      "stage": 2,
+      "soul_type": "Beast",
+      "damage_multiplier": 0.5,
+      "fire_rate_multiplier": 3.0,
+      "projectiles": [
+        {
+          "count": 1,
+          "speed": 40.0,
+          "size": 0.5,
+          "color": [
+            255,
+            200,
+            150,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": false,
+          "homing": false,
+          "explosive": false,
+          "spread": 0.1
+        }
+      ]
+    },
+    {
+      "id": "tendril_burst",
+      "name": "Tendril Burst",
+      "stage": 2,
+      "soul_type": "Undead",
+      "damage_multiplier": 1.0,
+      "fire_rate_multiplier": 0.8,
+      "projectiles": [
+        {
+          "count": 6,
+          "speed": 30.0,
+          "size": 0.25,
+          "color": [
+            100,
+            255,
+            100,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": true,
+          "homing": false,
+          "explosive": false,
+          "spread": 0.15,
+          "damage_per_projectile": 0.5
+        }
+      ]
+    },
+    {
+      "id": "parasite_swarm",
+      "name": "Parasite Swarm",
+      "stage": 2,
+      "soul_type": "Demon",
+      "damage_multiplier": 0.6,
+      "fire_rate_multiplier": 1.5,
+      "projectiles": [
+        {
+          "count": 3,
+          "speed": 35.0,
+          "size": 0.3,
+          "color": [
+            200,
+            0,
+            255,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": false,
+          "homing": true,
+          "explosive": false,
+          "spread": 0.3,
+          "damage_per_projectile": 0.6
+        }
+      ]
+    },
+    {
+      "id": "apex_predator",
+      "name": "Apex Predator",
+      "stage": 3,
+      "soul_type": "Beast",
+      "damage_multiplier": 0.4,
+      "fire_rate_multiplier": 6.0,
+      "projectiles": [
+        {
+          "count": 1,
+          "speed": 30.0,
+          "size": 0.2,
+          "color": [
+            255,
+            100,
+            50,
+            255
+          ],
+          "piercing": true,
+          "lifesteal": false,
+          "homing": false,
+          "explosive": false,
+          "spread": 0.2
+        }
+      ]
+    },
+    {
+      "id": "necrotic_cannon",
+      "name": "Necrotic Cannon",
+      "stage": 3,
+      "soul_type": "Undead",
+      "damage_multiplier": 3.0,
+      "fire_rate_multiplier": 0.5,
+      "projectiles": [
+        {
+          "count": 1,
+          "speed": 15.0,
+          "size": 0.6,
+          "color": [
+            50,
+            255,
+            50,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": false,
+          "homing": false,
+          "explosive": true,
+          "explosion_radius": 5.0,
+          "spread": 0.0
+        }
+      ]
+    },
+    {
+      "id": "inferno_beast",
+      "name": "Inferno Beast",
+      "stage": 3,
+      "soul_type": "Demon",
+      "damage_multiplier": 5.0,
+      "fire_rate_multiplier": 0.4,
+      "projectiles": [
+        {
+          "count": 1,
+          "speed": 60.0,
+          "size": 0.4,
+          "color": [
+            255,
+            50,
+            0,
+            255
+          ],
+          "piercing": true,
+          "lifesteal": false,
+          "homing": false,
+          "explosive": false,
+          "spread": 0.0
+        }
+      ]
+    },
+    {
+      "id": "feral_shredder",
+      "name": "Feral Shredder",
+      "stage": 4,
+      "soul_type": "Beast",
+      "damage_multiplier": 0.5,
+      "fire_rate_multiplier": 8.0,
+      "projectiles": [
+        {
+          "count": 2,
+          "speed": 40.0,
+          "size": 0.25,
+          "color": [
+            255,
+            255,
+            0,
+            255
+          ],
+          "piercing": true,
+          "lifesteal": false,
+          "homing": false,
+          "explosive": false,
+          "spread": 0.3,
+          "damage_per_projectile": 0.4
+        }
+      ]
+    },
+    {
+      "id": "plague_spreader",
+      "name": "Plague Spreader",
+      "stage": 4,
+      "soul_type": "Undead",
+      "damage_multiplier": 1.5,
+      "fire_rate_multiplier": 0.7,
+      "projectiles": [
+        {
+          "count": 8,
+          "speed": 20.0,
+          "size": 0.3,
+          "color": [
+            0,
+            255,
+            0,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": false,
+          "homing": false,
+          "explosive": true,
+          "explosion_radius": 3.0,
+          "spread": 0.15,
+          "damage_per_projectile": 0.8
+        }
+      ]
+    },
+    {
+      "id": "hellfire_missiles",
+      "name": "Hellfire Missiles",
+      "stage": 4,
+      "soul_type": "Demon",
+      "damage_multiplier": 2.0,
+      "fire_rate_multiplier": 1.0,
+      "projectiles": [
+        {
+          "count": 4,
+          "speed": 15.0,
+          "size": 0.5,
+          "color": [
+            255,
+            100,
+            0,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": false,
+          "homing": true,
+          "explosive": true,
+          "explosion_radius": 4.0,
+          "spread": 0.4,
+          "damage_per_projectile": 1.5
+        }
+      ]
+    },
+    {
+      "id": "omega_fang",
+      "name": "Omega Fang",
+      "stage": 5,
+      "soul_type": "Beast",
+      "damage_multiplier": 0.6,
+      "fire_rate_multiplier": 10.0,
+      "projectiles": [
+        {
+          "count": 3,
+          "speed": 50.0,
+          "size": 0.3,
+          "color": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "piercing": true,
+          "lifesteal": true,
+          "homing": false,
+          "explosive": false,
+          "spread": 0.2,
+          "damage_per_projectile": 0.5
+        }
+      ]
+    },
+    {
+      "id": "deaths_hand",
+      "name": "Death's Hand",
+      "stage": 5,
+      "soul_type": "Undead",
+      "damage_multiplier": 4.0,
+      "fire_rate_multiplier": 0.3,
+      "projectiles": [
+        {
+          "count": 12,
+          "speed": 10.0,
+          "size": 0.8,
+          "color": [
+            50,
+            0,
+            50,
+            255
+          ],
+          "piercing": true,
+          "lifesteal": true,
+          "homing": false,
+          "explosive": false,
+          "spread": 0.05,
+          "damage_per_projectile": 2.0
+        }
+      ]
+    },
+    {
+      "id": "armageddon",
+      "name": "Armageddon",
+      "stage": 5,
+      "soul_type": "Demon",
+      "damage_multiplier": 20.0,
+      "fire_rate_multiplier": 0.1,
+      "projectiles": [
+        {
+          "count": 1,
+          "speed": 8.0,
+          "size": 2.0,
+          "color": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": false,
+          "homing": false,
+          "explosive": true,
+          "explosion_radius": 15.0,
+          "spread": 0.0
+        }
+      ]
+    }
+  ]
+}

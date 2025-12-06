@@ -7,13 +7,6 @@ using Raylib_cs;
 
 namespace DarkArmsProto
 {
-    public enum SoulType
-    {
-        Beast,
-        Undead,
-        Demon,
-    }
-
     public class WeaponSystem
     {
         public string WeaponName { get; private set; }
