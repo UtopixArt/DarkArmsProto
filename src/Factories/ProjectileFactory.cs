@@ -12,7 +12,7 @@ namespace DarkArmsProto.Factories
     /// </summary>
     public static class ProjectileFactory
     {
-        private static Random random = new Random();
+        private static Random random = new();
 
         /// <summary>
         /// Create a single projectile from projectile data
@@ -132,8 +132,8 @@ namespace DarkArmsProto.Factories
                 Size = soulType == SoulType.Undead ? 0.3f : 0.4f,
                 Color = soulType switch
                 {
-                    SoulType.Undead => new int[] { 0, 255, 0, 255 },
-                    _ => new int[] { 255, 0, 0, 255 },
+                    SoulType.Undead => [0, 255, 0, 255],
+                    _ => [255, 0, 0, 255],
                 },
             };
 
