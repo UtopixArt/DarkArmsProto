@@ -26,14 +26,21 @@ namespace DarkArmsProto.Core
     public class InputService
     {
         public bool GetKey(KeyboardKey key) => Raylib.IsKeyDown(key);
+
         public bool GetKeyPressed(KeyboardKey key) => Raylib.IsKeyPressed(key);
+
         public bool GetKeyReleased(KeyboardKey key) => Raylib.IsKeyReleased(key);
+
         public bool GetMouseButton(MouseButton button) => Raylib.IsMouseButtonDown(button);
+
         public bool GetMouseButtonPressed(MouseButton button) =>
             Raylib.IsMouseButtonPressed(button);
+
         public bool GetMouseButtonReleased(MouseButton button) =>
             Raylib.IsMouseButtonReleased(button);
+
         public Vector2 GetMousePosition() => Raylib.GetMousePosition();
+
         public Vector2 GetMouseDelta() => Raylib.GetMouseDelta();
     }
 
@@ -196,6 +203,7 @@ namespace DarkArmsProto.Core
     {
         public void PlaySound(SoundType type, float volume) =>
             AudioManager.Instance.PlaySound(type, volume);
+
         public void SetMasterVolume(float volume) => AudioManager.Instance.SetMasterVolume(volume);
     }
 }

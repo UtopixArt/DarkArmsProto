@@ -91,7 +91,8 @@ namespace DarkArmsProto.Core
         /// <summary>
         /// Find all components of a specific type (like Unity's FindObjectsOfType)
         /// </summary>
-        public List<T> FindComponentsOfType<T>() where T : Component
+        public List<T> FindComponentsOfType<T>()
+            where T : Component
         {
             var results = new List<T>();
             foreach (var obj in allObjects)
