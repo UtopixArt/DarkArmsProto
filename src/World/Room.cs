@@ -357,11 +357,11 @@ namespace DarkArmsProto.World
                 else
                 {
                     double roll = rng.NextDouble();
-                    if (roll < 0.55) // 50% Beast
+                    if (roll < 0.33) // 33% Beast
                         soulType = SoulType.Beast;
-                    else if (roll < 0.70) // 45% Demon
+                    else if (roll < 0.70) // 37% Demon
                         soulType = SoulType.Demon;
-                    else // 40% Undead
+                    else // 30% Undead
                         soulType = SoulType.Undead;
                 }
 
