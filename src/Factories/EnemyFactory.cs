@@ -34,8 +34,9 @@ namespace DarkArmsProto.Factories
                 .WithAttackRange(enemyData.AttackRange)
                 .WithDetectionRange(enemyData.DetectionRange)
                 .WithAttackCooldown(enemyData.AttackCooldown)
-                .WithSprite(enemyData.SpritePath, enemyData.SpriteSize)
-                .WithColliderSize(enemyData.GetColliderSize());
+                .WithSprite(enemyData.SpritePath, enemyData.SpriteSize, enemyData.GetSpriteOffset())
+                .WithColliderSize(enemyData.GetColliderSize())
+                .WithColliderOffset(enemyData.GetColliderOffset());
 
             if (enemyData.IsFlying)
                 builder.AsFlying();
@@ -43,7 +44,12 @@ namespace DarkArmsProto.Factories
             if (enemyData.IsRanged)
                 builder.AsRanged();
 
-            return builder.Build();
+            var enemy = builder.Build();
+
+            // Register enemy to GameWorld automatically
+            GameWorld.Instance.Register(enemy, "Enemy");
+
+            return enemy;
         }
     }
 }

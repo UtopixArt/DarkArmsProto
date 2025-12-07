@@ -24,9 +24,11 @@ namespace DarkArmsProto.Builders
         private bool isRanged = false;
         private string spritePath = "";
         private float spriteSize = 3.5f;
+        private Vector3 spriteOffset = Vector3.Zero;
         private Color color = Color.White;
         private Vector3 meshSize = new Vector3(1.5f, 4.5f, 1.5f);
         private Vector3 colliderSize = new Vector3(0.75f, 2.25f, 0.75f);
+        private Vector3 colliderOffset = Vector3.Zero;
         private Action<Vector3, Vector3, float, SoulType>? onShootCallback = null;
 
         public EnemyBuilder() { }
@@ -107,11 +109,17 @@ namespace DarkArmsProto.Builders
 
         // === VISUALS ===
 
-        public EnemyBuilder WithSprite(string path, float size)
+        public EnemyBuilder WithSprite(string path, float size, Vector3 offset)
         {
             this.spritePath = path;
             this.spriteSize = size;
+            this.spriteOffset = offset;
             return this;
+        }
+
+        public EnemyBuilder WithSprite(string path, float size)
+        {
+            return WithSprite(path, size, Vector3.Zero);
         }
 
         public EnemyBuilder WithColor(Color col)
@@ -120,15 +128,15 @@ namespace DarkArmsProto.Builders
             return this;
         }
 
-        public EnemyBuilder WithMeshSize(Vector3 size)
-        {
-            this.meshSize = size;
-            return this;
-        }
-
         public EnemyBuilder WithColliderSize(Vector3 size)
         {
             this.colliderSize = size;
+            return this;
+        }
+
+        public EnemyBuilder WithColliderOffset(Vector3 offset)
+        {
+            this.colliderOffset = offset;
             return this;
         }
 
@@ -173,18 +181,15 @@ namespace DarkArmsProto.Builders
             // Visuals
             if (!string.IsNullOrEmpty(spritePath))
             {
-                enemy.AddComponent(
-                    new SpriteRendererComponent(spritePath, spriteSize, Color.White)
-                );
+                var spriteComp = new SpriteRendererComponent(spritePath, spriteSize, Color.White);
+                spriteComp.Offset = spriteOffset;
+                enemy.AddComponent(spriteComp);
             }
             else
             {
                 // Fallback to mesh
                 enemy.AddComponent(new MeshRendererComponent(color, meshSize));
             }
-
-            // Enemy tag
-            enemy.AddComponent(new EnemyComponent(soulType));
 
             // Health bar
             float healthBarOffset = isFlying ? 1.5f : GameConfig.EnemyHealthBarOffsetY;
@@ -196,7 +201,12 @@ namespace DarkArmsProto.Builders
             );
 
             // Collider
-            enemy.AddComponent(new ColliderComponent { Size = colliderSize });
+            enemy.AddComponent(
+                new ColliderComponent { Size = colliderSize, Offset = colliderOffset }
+            );
+
+            // Death handler (manages soul spawning and VFX on death)
+            enemy.AddComponent(new EnemyDeathComponent(soulType));
 
             return enemy;
         }

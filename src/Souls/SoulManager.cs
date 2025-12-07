@@ -30,19 +30,24 @@ namespace DarkArmsProto
             var go = new GameObject(position);
 
             var soulComp = new SoulComponent(type);
+            soulComp.ParticleManager = particleManager;
             go.AddComponent(soulComp);
 
             Color color = type switch
             {
-                SoulType.Beast => new Color(255, 136, 0, 255),
-                SoulType.Undead => new Color(0, 255, 0, 255),
-                SoulType.Demon => new Color(255, 0, 0, 255),
+                SoulType.Beast => new Color(255, 136, 0, 200),
+                SoulType.Undead => new Color(0, 255, 0, 200),
+                SoulType.Demon => new Color(255, 0, 0, 200),
                 _ => Color.White,
             };
 
             var meshComp = new MeshRendererComponent(color, new Vector3(0.3f));
+            var color2 = new Color(color.R, color.G, color.B, (byte)100);
+            var meshComp2 = new MeshRendererComponent(color2, new Vector3(0.4f));
             meshComp.MeshType = MeshType.Sphere;
+            meshComp2.MeshType = MeshType.Sphere;
             go.AddComponent(meshComp);
+            go.AddComponent(meshComp2);
 
             souls.Add(go);
         }

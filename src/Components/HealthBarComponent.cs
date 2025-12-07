@@ -35,6 +35,10 @@ namespace DarkArmsProto.Components
             if (percent > 1)
                 percent = 1;
 
+            // Only show if damaged (hide if full health)
+            if (percent >= 0.99f)
+                return;
+
             Vector3 pos = Owner.Position + Offset;
 
             // Get screen position

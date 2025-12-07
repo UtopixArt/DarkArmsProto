@@ -44,7 +44,8 @@ namespace DarkArmsProto.Factories
                 .WithDirection(finalDir, data.Speed)
                 .WithDamage(baseDamage * data.DamagePerProjectile)
                 .WithSize(data.Size)
-                .WithColor(data.GetColor());
+                .WithColor(data.GetColor())
+                .WithTrail(data.GetColor());
 
             if (isEnemyProjectile)
             {
@@ -148,6 +149,7 @@ namespace DarkArmsProto.Factories
                 .WithDamage(damage)
                 .WithSize(size)
                 .WithColor(color)
+                .WithTrail(color)
                 .AsEnemyProjectile()
                 .Build();
         }

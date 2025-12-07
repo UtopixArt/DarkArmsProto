@@ -43,8 +43,8 @@ namespace DarkArmsProto.Components.Behaviors
             Vector3 hitPosition
         )
         {
-            // No lifesteal on walls
-            return false;
+            // Lifesteal doesn't prevent wall destruction
+            return true;
         }
     }
 }

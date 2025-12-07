@@ -60,17 +60,17 @@ namespace DarkArmsProto.Components
                 { SoulType.Demon, 0 },
             };
 
-            Console.WriteLine(
-                $"[WeaponComponent] Initialized with {currentWeapon?.Name ?? "Unknown"}"
-            );
+            // Console.WriteLine(
+            //     $"[WeaponComponent] Initialized with {currentWeapon?.Name ?? "Unknown"}"
+            // );
         }
 
         public override void Update(float deltaTime)
         {
             lastShotTime += deltaTime;
 
-            // Check for evolution input
-            if (canEvolve && Raylib.IsKeyPressed(KeyboardKey.E))
+            // Check for evolution input (using Services instead of Raylib directly)
+            if (canEvolve && Core.Services.Input.GetKeyPressed(KeyboardKey.E))
             {
                 Evolve();
             }

@@ -11,7 +11,7 @@ namespace DarkArmsProto.Components
         public Vector3 Size { get; set; } = new Vector3(0.5f, 0.5f, 0.5f);
         public Vector3 Offset { get; set; } = Vector3.Zero;
         public bool IsTrigger { get; set; } = false;
-        public bool ShowDebug { get; set; } = true; // Show debug wireframe
+        public bool ShowDebug { get; set; } = false; // Show debug wireframe
 
         // Legacy radius support for backward compatibility
         public float Radius

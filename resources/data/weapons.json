@@ -4,23 +4,24 @@
       "id": "flesh_pistol",
       "name": "Flesh Pistol",
       "stage": 1,
-      "damage_multiplier": 3.0,
-      "fire_rate_multiplier": 2.0,
+      "damage_multiplier": 1.0,
+      "fire_rate_multiplier": 1.0,
       "projectiles": [
         {
           "count": 1,
-          "speed": 40.0,
-          "size": 0.3,
+          "speed": 60.0,
+          "size": 0.2,
           "color": [
             255,
             0,
             255,
-            255
+            150
           ],
-          "piercing": false,
+          "piercing": true,
           "lifesteal": false,
           "homing": false,
-          "explosive": false,
+          "explosive": true,
+          "explosion_radius": 12.0,
           "spread": 0.0
         }
       ]
@@ -41,7 +42,7 @@
             255,
             200,
             150,
-            255
+            150
           ],
           "piercing": false,
           "lifesteal": false,
@@ -57,24 +58,24 @@
       "stage": 2,
       "soul_type": "Undead",
       "damage_multiplier": 1.0,
-      "fire_rate_multiplier": 0.8,
+      "fire_rate_multiplier": 0.75,
       "projectiles": [
         {
-          "count": 6,
-          "speed": 30.0,
-          "size": 0.25,
+          "count": 8,
+          "speed": 45.0,
+          "size": 0.15,
           "color": [
             100,
             255,
             100,
-            255
+            150
           ],
           "piercing": false,
           "lifesteal": true,
           "homing": false,
           "explosive": false,
-          "spread": 0.15,
-          "damage_per_projectile": 0.5
+          "spread": 0.025,
+          "damage_per_projectile": 0.35
         }
       ]
     },
@@ -94,7 +95,7 @@
             200,
             0,
             255,
-            255
+            150
           ],
           "piercing": false,
           "lifesteal": false,

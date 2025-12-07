@@ -78,9 +78,9 @@ namespace DarkArmsProto.Data
                 }
 
                 isLoaded = true;
-                Console.WriteLine(
-                    $"[WeaponDatabase] Loaded {config.Weapons.Count} weapons from {path}"
-                );
+                // Console.WriteLine(
+                //     $"[WeaponDatabase] Loaded {config.Weapons.Count} weapons from {path}"
+                // );
             }
             catch (Exception e)
             {

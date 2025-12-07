@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using DarkArmsProto.Core;
 
 namespace DarkArmsProto.Components
@@ -10,7 +11,11 @@ namespace DarkArmsProto.Components
         public float HitFlashTime { get; set; }
 
         public bool IsDead => CurrentHealth <= 0;
-        public event Action<float>? OnDamageTaken;
+
+        // Events for damage and death
+        public event Action<float>? OnDamageTaken; // (damage amount)
+        public event Action<float, Vector3>? OnDamageTakenWithPosition; // (damage, position) - for damage numbers
+        public event Action? OnDeath; // Called when health reaches 0
 
         public HealthComponent() { }
 
@@ -22,9 +27,18 @@ namespace DarkArmsProto.Components
 
         public void TakeDamage(float amount)
         {
+            bool wasAlive = CurrentHealth > 0;
             CurrentHealth = Math.Max(0, CurrentHealth - amount);
             HitFlashTime = GameConfig.HitFlashDuration;
+
             OnDamageTaken?.Invoke(amount);
+            OnDamageTakenWithPosition?.Invoke(amount, Owner.Position);
+
+            // Trigger death event if just died
+            if (wasAlive && IsDead)
+            {
+                OnDeath?.Invoke();
+            }
         }
 
         public void Heal(float amount)

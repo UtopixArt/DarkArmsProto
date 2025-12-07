@@ -2,16 +2,21 @@
   "enemies": [
     {
       "soul_type": "Beast",
-      "health": 50.0,
+      "health": 120.0,
       "speed": 8.0,
       "damage": 15.0,
-      "attack_range": 1.5,
+      "attack_range": 3.5,
       "detection_range": 20.0,
-      "attack_cooldown": 0.8,
+      "attack_cooldown": 1,
       "is_flying": false,
       "is_ranged": false,
       "sprite_path": "resources/images/beast.png",
-      "sprite_size": 3.5,
+      "sprite_size": 3.75,
+      "sprite_offset": [
+        0.0,
+        0.3,
+        0.0
+      ],
       "color": [
         255,
         136,
@@ -20,27 +25,42 @@
       ],
       "mesh_size": [
         1.5,
-        4.5,
+        3.75,
         1.5
       ],
       "collider_size": [
-        0.75,
-        2.25,
-        0.75
+        1.35,
+        1.55,
+        1.35
+      ],
+      "collider_offset": [
+        0.0,
+        0.0,
+        0.3
       ]
     },
     {
       "soul_type": "Undead",
-      "health": 80.0,
+      "health": 180.0,
       "speed": 3.0,
-      "damage": 10.0,
-      "attack_range": 10.0,
-      "detection_range": 15.0,
+      "damage": 6.0,
+      "attack_range": 16.0,
+      "detection_range": 28.0,
       "attack_cooldown": 2.0,
       "is_flying": false,
       "is_ranged": true,
       "sprite_path": "resources/images/undead.png",
-      "sprite_size": 3.5,
+      "sprite_size": 2.2,
+      "sprite_offset": [
+        0.0,
+        0.3,
+        0.0
+      ],
+      "collider_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
       "color": [
         0,
         255,
@@ -49,20 +69,20 @@
       ],
       "mesh_size": [
         1.5,
-        4.5,
+        2.5,
         1.5
       ],
       "collider_size": [
         0.75,
-        2.25,
+        1.0,
         0.75
       ]
     },
     {
       "soul_type": "Demon",
       "health": 65.0,
-      "speed": 6.0,
-      "damage": 25.0,
+      "speed": 10.0,
+      "damage": 15.0,
       "attack_range": 15.0,
       "detection_range": 35.0,
       "attack_cooldown": 1.0,

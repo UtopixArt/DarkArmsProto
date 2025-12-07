@@ -60,22 +60,41 @@ namespace DarkArmsProto.World
 
         public void GenerateDungeon()
         {
-            // Larger dungeon grid
-            // Layout: Procédural, jusqu'à 15 salles
-            // [ ][ ][ ][ ][ ]
-            // [ ][ ][S][ ][ ]
-            // [ ][ ][ ][ ][ ]
+            // Retry loop to ensure a good dungeon layout
+            int attempts = 0;
+            while (attempts < 10)
+            {
+                rooms.Clear();
+                Vector2 startPos = Vector2.Zero;
 
-            Vector2 startPos = new Vector2(2, 2); // Center
+                // Create starting room
+                var startRoom = new Room(startPos, RoomType.Start);
+                rooms[startPos] = startRoom;
 
-            // Create starting room
-            var startRoom = new Room(startPos, RoomType.Start);
-            rooms[startPos] = startRoom;
-            currentRoom = startRoom;
+                // Generate connected rooms - Increased to 20 rooms max
+                GenerateRoomsRecursive(startRoom, 0, 20);
+
+                // Ensure we have enough rooms (e.g. at least 6)
+                if (rooms.Count >= 6)
+                    break;
+
+                attempts++;
+            }
+
+            // Set current room
+            if (rooms.ContainsKey(Vector2.Zero))
+            {
+                currentRoom = rooms[Vector2.Zero];
+            }
+            else
+            {
+                // Fallback
+                var startRoom = new Room(Vector2.Zero, RoomType.Start);
+                rooms[Vector2.Zero] = startRoom;
+                currentRoom = startRoom;
+            }
+
             currentRoom.OnEnter();
-
-            // Generate connected rooms - Increased to 15 rooms max
-            GenerateRoomsRecursive(startRoom, 0, 15);
 
             // Connect rooms with doors
             ConnectRooms();
@@ -83,7 +102,8 @@ namespace DarkArmsProto.World
 
         private void GenerateRoomsRecursive(Room parentRoom, int depth, int maxRooms)
         {
-            if (rooms.Count >= maxRooms || depth > 5)
+            // Increased depth limit to 10 to allow longer paths
+            if (rooms.Count >= maxRooms || depth > 10)
                 return;
 
             Vector2 parentPos = parentRoom.GridPosition;
@@ -110,8 +130,8 @@ namespace DarkArmsProto.World
                 if (rooms.ContainsKey(newPos))
                     continue;
 
-                // 75% chance to create a room (increased density)
-                if (random.NextDouble() > 0.75)
+                // 10% chance to skip (was 25%) - makes it denser
+                if (random.NextDouble() > 0.9)
                     continue;
 
                 // Determine room type
@@ -338,6 +358,17 @@ namespace DarkArmsProto.World
             currentRoom.RenderWalls();
             currentRoom.RenderInterior();
             currentRoom.RenderDoors();
+
+            // Sort enemies by distance to camera (Back to Front) for proper transparency
+            Vector3 camPos = Game.GameCamera.Position;
+            currentRoom.Enemies.Sort(
+                (a, b) =>
+                {
+                    float distA = Vector3.DistanceSquared(a.Position, camPos);
+                    float distB = Vector3.DistanceSquared(b.Position, camPos);
+                    return distB.CompareTo(distA); // Descending order (far to near)
+                }
+            );
 
             // Render current room enemies
             foreach (var enemy in currentRoom.Enemies)

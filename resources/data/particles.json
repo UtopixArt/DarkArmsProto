@@ -1,0 +1,212 @@
+[
+  {
+    "Name": "Explosion",
+    "Emitters": [
+      {
+        "Count": 451,
+        "MinSpeed": 0.5,
+        "MaxSpeed": 5.5,
+        "MinLifetime": 0.4,
+        "MaxLifetime": 1.2,
+        "MinSize": 0.060000002,
+        "MaxSize": 0.14999999,
+        "Gravity": 3,
+        "Drag": 1,
+        "Color": {
+          "R": 255,
+          "G": 100,
+          "B": 0,
+          "A": 255
+        },
+        "UseRandomColors": false,
+        "Spread": {
+          "X": 1,
+          "Y": 1.4000001,
+          "Z": 1
+        },
+        "InitialRadius": 1.3999999,
+        "IsBurst": true
+      }
+    ]
+  },
+  {
+    "Name": "FlatExplosion",
+    "Emitters": [
+      {
+        "Count": 100,
+        "MinSpeed": 8,
+        "MaxSpeed": 15,
+        "MinLifetime": 0.5,
+        "MaxLifetime": 1,
+        "MinSize": 0.1,
+        "MaxSize": 0.3,
+        "Gravity": 0,
+        "Drag": 0.9,
+        "Color": {
+          "R": 255,
+          "G": 50,
+          "B": 0,
+          "A": 255
+        },
+        "UseRandomColors": true,
+        "Spread": {
+          "X": 1,
+          "Y": 0,
+          "Z": 1
+        },
+        "InitialRadius": 0.5,
+        "IsBurst": true
+      }
+    ]
+  },
+  {
+    "Name": "Impact",
+    "Emitters": [
+      {
+        "Count": 50,
+        "MinSpeed": 11.5,
+        "MaxSpeed": 38,
+        "MinLifetime": 0.20000002,
+        "MaxLifetime": 0.5,
+        "MinSize": 0.060000002,
+        "MaxSize": 0.10000001,
+        "Gravity": -10,
+        "Drag": 0.90999943,
+        "Color": {
+          "R": 255,
+          "G": 255,
+          "B": 200,
+          "A": 255
+        },
+        "UseRandomColors": false,
+        "Spread": {
+          "X": 0.3,
+          "Y": 0.1,
+          "Z": 0.3
+        },
+        "InitialRadius": 0.49999967,
+        "IsBurst": true
+      }
+    ]
+  },
+  {
+    "Name": "Blood",
+    "Emitters": [
+      {
+        "Count": 85,
+        "MinSpeed": 2,
+        "MaxSpeed": 8,
+        "MinLifetime": 0.6,
+        "MaxLifetime": 1.6,
+        "MinSize": 0.01,
+        "MaxSize": 0.15,
+        "Gravity": -15,
+        "Drag": 0.95,
+        "Color": {
+          "R": 200,
+          "G": 0,
+          "B": 0,
+          "A": 255
+        },
+        "UseRandomColors": false,
+        "Spread": {
+          "X": 1.0000001,
+          "Y": 2.1000001,
+          "Z": 1.0000001
+        },
+        "InitialRadius": 0.5,
+        "IsBurst": true
+      }
+    ]
+  },
+  {
+    "Name": "Soul",
+    "Emitters": [
+      {
+        "Count": 21,
+        "MinSpeed": 0.5,
+        "MaxSpeed": 1.5,
+        "MinLifetime": 1,
+        "MaxLifetime": 2,
+        "MinSize": 0.05,
+        "MaxSize": 0.1,
+        "Gravity": 3,
+        "Drag": 0.95,
+        "Color": {
+          "R": 100,
+          "G": 255,
+          "B": 255,
+          "A": 150
+        },
+        "UseRandomColors": false,
+        "Spread": {
+          "X": 0.2,
+          "Y": 1.1,
+          "Z": 0.2
+        },
+        "InitialRadius": 0.2,
+        "IsBurst": true
+      }
+    ]
+  },
+  {
+    "Name": "MuzzleFlash",
+    "Emitters": [
+      {
+        "Count": 5,
+        "MinSpeed": 0.5,
+        "MaxSpeed": 1.5,
+        "MinLifetime": 0.1,
+        "MaxLifetime": 0.2,
+        "MinSize": 0.1,
+        "MaxSize": 0.3,
+        "Gravity": 0,
+        "Drag": 0.8,
+        "Color": {
+          "R": 255,
+          "G": 255,
+          "B": 100,
+          "A": 200
+        },
+        "UseRandomColors": false,
+        "Spread": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "InitialRadius": 0.1,
+        "IsBurst": true
+      }
+    ]
+  },
+  {
+    "Name": "Trail",
+    "Emitters": [
+      {
+        "Count": 1,
+        "MinSpeed": 0,
+        "MaxSpeed": 0.7,
+        "MinLifetime": 0.2,
+        "MaxLifetime": 0.3,
+        "MinSize": 0.05,
+        "MaxSize": 0.2,
+        "Gravity": 0,
+        "Drag": 2,
+        "Color": {
+          "R": 255,
+          "G": 255,
+          "B": 255,
+          "A": 100
+        },
+        "UseRandomColors": false,
+        "Spread": {
+          "X": 0.1,
+          "Y": 0.1,
+          "Z": 0.1
+        },
+        "InitialRadius": 0.1,
+        "IsBurst": true
+      }
+    ]
+  }
+]
