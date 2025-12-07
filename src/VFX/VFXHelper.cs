@@ -32,11 +32,35 @@ namespace DarkArmsProto.VFX
         /// <summary>
         /// Spawn explosion effect (particles + light + sound)
         /// </summary>
-        public static void SpawnExplosion(Vector3 position, Color color, int particleCount = 40)
+        public static void SpawnExplosion(
+            Vector3 position,
+            Color? color = null,
+            int particleCount = 40
+        )
         {
-            particleManager?.SpawnExplosion(position, color, particleCount);
-            lightManager?.AddExplosionLight(position, color);
+            Color finalColor = color ?? Color.Orange;
+
+            if (Data.ParticleDatabase.GetEffect("Explosion") != null)
+            {
+                // Pass color only if it was explicitly provided (not null)
+                // If color is null, SpawnEffect will use the JSON color
+                particleManager?.SpawnEffect("Explosion", position, color);
+            }
+            else
+            {
+                particleManager?.SpawnExplosion(position, finalColor, particleCount);
+            }
+
+            lightManager?.AddExplosionLight(position, finalColor);
             AudioManager.Instance.PlaySound(SoundType.Explosion, 0.5f);
+        }
+
+        /// <summary>
+        /// Spawn trail effect
+        /// </summary>
+        public static void SpawnTrail(Vector3 position, Color color)
+        {
+            particleManager?.SpawnEffect("Trail", position, color);
         }
 
         /// <summary>
@@ -44,8 +68,33 @@ namespace DarkArmsProto.VFX
         /// </summary>
         public static void SpawnMuzzleFlash(Vector3 position, Color color)
         {
-            particleManager?.SpawnImpact(position, color, 2);
+            // Try to use data-driven MuzzleFlash, fallback to Impact
+            if (Data.ParticleDatabase.GetEffect("MuzzleFlash") != null)
+            {
+                particleManager?.SpawnEffect("MuzzleFlash", position, color);
+            }
+            else
+            {
+                particleManager?.SpawnImpact(position, color, 8);
+            }
+
             lightManager?.AddMuzzleFlash(position, color);
+        }
+
+        /// <summary>
+        /// Spawn blood effect
+        /// </summary>
+        public static void SpawnBlood(Vector3 position)
+        {
+            if (Data.ParticleDatabase.GetEffect("Blood") != null)
+            {
+                // Pass null so JSON color is used
+                particleManager?.SpawnEffect("Blood", position, null);
+            }
+            else
+            {
+                particleManager?.SpawnImpact(position, Color.Red, 15);
+            }
         }
 
         /// <summary>
@@ -58,9 +107,11 @@ namespace DarkArmsProto.VFX
             float shakeAmount = 0.3f
         )
         {
-            particleManager?.SpawnExplosion(position, color, 40);
-            lightManager?.AddExplosionLight(position, color);
-            AudioManager.Instance.PlaySound(SoundType.Kill, 0.4f);
+            // Use SpawnExplosion helper which handles data-driven logic
+            SpawnExplosion(position, color, 80);
+
+            // lightManager?.AddExplosionLight(position, color); // Already called by SpawnExplosion
+            // AudioManager.Instance.PlaySound(SoundType.Kill, 0.4f); // Keep this if different from Explosion sound
 
             // Screen shake if player is provided
             if (player != null)

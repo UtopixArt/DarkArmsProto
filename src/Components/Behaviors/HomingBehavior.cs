@@ -78,8 +78,8 @@ namespace DarkArmsProto.Components.Behaviors
             Vector3 hitPosition
         )
         {
-            // Homing doesn't affect wall hit
-            return false;
+            // Homing projectiles should be destroyed by walls
+            return true;
         }
     }
 }

@@ -35,15 +35,16 @@ namespace DarkArmsProto.VFX
         private int[] targetLocs = new int[MAX_LIGHTS];
         private int[] colorLocs = new int[MAX_LIGHTS];
 
+        public string VertexShaderPath { get; set; } = "resources/shaders/lighting.vs";
+        public string FragmentShaderPath { get; set; } = "resources/shaders/lighting.fs";
+        public float[] AmbientLight { get; set; } = new float[] { 0.05f, 0.05f, 0.05f, 1.0f };
+
         public void Initialize()
         {
             try
             {
                 // Load shader
-                LightingShader = Raylib.LoadShader(
-                    "resources/shaders/lighting.vs",
-                    "resources/shaders/lighting.fs"
-                );
+                LightingShader = Raylib.LoadShader(VertexShaderPath, FragmentShaderPath);
 
                 // Get standard locations
                 // LightingShader.Locs[(int)ShaderLocationIndex.VectorView] = Raylib.GetShaderLocation(LightingShader, "viewPos");
@@ -52,11 +53,10 @@ namespace DarkArmsProto.VFX
                 shininessLoc = Raylib.GetShaderLocation(LightingShader, "shininess");
 
                 // Set ambient light
-                float[] ambient = new float[] { 0.05f, 0.05f, 0.05f, 1.0f }; // Darker ambient (was 0.2)
                 Raylib.SetShaderValue(
                     LightingShader,
                     ambientLoc,
-                    ambient,
+                    AmbientLight,
                     ShaderUniformDataType.Vec4
                 );
 
@@ -256,12 +256,17 @@ namespace DarkArmsProto.VFX
             lights.RemoveAll(l => l.IsStatic);
         }
 
+        public Builders.DynamicLightBuilder CreateLight(Vector3 position)
+        {
+            return new Builders.DynamicLightBuilder(this, position);
+        }
+
         /// <summary>
         /// Add an explosion light (intense, orange/red glow)
         /// </summary>
         public void AddExplosionLight(Vector3 position, Color baseColor)
         {
-            AddLight(position, baseColor, 2.0f, 6f, 0.6f, flicker: true); // Reduced intensity significantly
+            CreateLight(position).WithColor(baseColor).AsExplosion().Spawn();
         }
 
         /// <summary>
@@ -269,7 +274,7 @@ namespace DarkArmsProto.VFX
         /// </summary>
         public void AddMuzzleFlash(Vector3 position, Color color)
         {
-            AddLight(position, color, 1.0f, 3f, 0.1f, flicker: true); // Reduced intensity
+            CreateLight(position).WithColor(color).AsMuzzleFlash().Spawn();
         }
 
         /// <summary>
@@ -277,7 +282,7 @@ namespace DarkArmsProto.VFX
         /// </summary>
         public void AddImpactLight(Vector3 position, Color color)
         {
-            AddLight(position, color, 1.5f, 4f, 0.3f, flicker: false); // Reduced intensity
+            CreateLight(position).WithColor(color).AsImpact().Spawn();
         }
 
         public void Update(float deltaTime)
@@ -308,6 +313,7 @@ namespace DarkArmsProto.VFX
         {
             // Enable additive blending for bright glow effect
             Raylib.BeginBlendMode(BlendMode.Additive);
+            Rlgl.DisableDepthMask(); // Disable depth writing for transparent glow
 
             foreach (var light in lights)
             {
@@ -320,10 +326,12 @@ namespace DarkArmsProto.VFX
                 }
 
                 // Core bright sphere (Only for non-static lights like projectiles/explosions)
-                /*
                 if (!light.IsStatic)
                 {
                     byte coreAlpha = (byte)(255 * fade * currentIntensity);
+                    if (coreAlpha > 255)
+                        coreAlpha = 255;
+
                     Color coreColor = new Color(
                         Math.Min(255, (int)(light.Color.R * 1.5f)),
                         Math.Min(255, (int)(light.Color.G * 1.5f)),
@@ -333,10 +341,11 @@ namespace DarkArmsProto.VFX
                     Raylib.DrawSphere(light.Position, 0.3f * currentIntensity, coreColor);
 
                     // Multiple glow layers for volumetric effect (Only for non-static)
-                    for (int i = 1; i <= 8; i++)
+                    // Reduced layers for performance (was 8)
+                    for (int i = 1; i <= 3; i++)
                     {
-                        float sizeMult = 1.0f + i * 0.5f;
-                        byte alpha = (byte)(180 * fade * currentIntensity / (i * 0.7f));
+                        float sizeMult = 1.0f + i * 0.6f; // Increased spacing
+                        byte alpha = (byte)(180 * fade * currentIntensity / (i * 0.6f));
 
                         if (alpha > 5) // Skip very transparent layers
                         {
@@ -347,15 +356,15 @@ namespace DarkArmsProto.VFX
                                 alpha
                             );
 
-                            float radius = light.Radius * currentIntensity * 0.15f * sizeMult;
+                            float radius = light.Radius * currentIntensity * 0.8f * sizeMult;
                             Raylib.DrawSphere(light.Position, radius, glowColor);
                         }
                     }
                 }
-                */
             }
 
             // Reset to normal blending
+            Rlgl.EnableDepthMask();
             Raylib.EndBlendMode();
         }
 

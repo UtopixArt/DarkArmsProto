@@ -1,3 +1,4 @@
+using System.Numerics;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
 using DarkArmsProto.VFX;
@@ -22,6 +23,7 @@ namespace DarkArmsProto.Systems
         private MapEditor mapEditor;
         private CombatSystem combatSystem;
         private bool showColliderDebug;
+        private RenderTexture2D sceneTarget;
 
         public bool ShowColliderDebug
         {
@@ -50,7 +52,17 @@ namespace DarkArmsProto.Systems
             this.gameUI = gameUI;
             this.mapEditor = mapEditor;
             this.combatSystem = combatSystem;
-            this.showColliderDebug = true;
+            this.showColliderDebug = false;
+
+            this.sceneTarget = Raylib.LoadRenderTexture(
+                Raylib.GetScreenWidth(),
+                Raylib.GetScreenHeight()
+            );
+        }
+
+        public void Cleanup()
+        {
+            Raylib.UnloadRenderTexture(sceneTarget);
         }
 
         /// <summary>
@@ -58,8 +70,15 @@ namespace DarkArmsProto.Systems
         /// </summary>
         public void Render()
         {
-            Raylib.BeginDrawing();
-            Raylib.ClearBackground(Color.Black);
+            // Handle resize
+            if (Raylib.IsWindowResized())
+            {
+                Raylib.UnloadRenderTexture(sceneTarget);
+                sceneTarget = Raylib.LoadRenderTexture(
+                    Raylib.GetScreenWidth(),
+                    Raylib.GetScreenHeight()
+                );
+            }
 
             bool isEditor = mapEditor.IsActive;
             Camera3D renderCamera = GetRenderCamera(isEditor);
@@ -68,10 +87,49 @@ namespace DarkArmsProto.Systems
             lightManager.UpdateShader(renderCamera);
             Game.GameCamera = renderCamera;
 
-            // 3D rendering
-            Render3D(renderCamera, isEditor);
+            // 1. Render Scene to Texture
+            Raylib.BeginTextureMode(sceneTarget);
+            Raylib.ClearBackground(Color.Black);
 
-            // 2D UI rendering
+            Render3DScene(renderCamera);
+
+            Raylib.EndTextureMode();
+
+            // 2. Draw Scene Texture to Screen
+            Raylib.BeginDrawing();
+            Raylib.ClearBackground(Color.Black);
+
+            // Draw texture (flipped vertically because OpenGL coordinates)
+            Rectangle sourceRec = new Rectangle(
+                0,
+                0,
+                sceneTarget.Texture.Width,
+                -sceneTarget.Texture.Height
+            );
+            Rectangle destRec = new Rectangle(
+                0,
+                0,
+                Raylib.GetScreenWidth(),
+                Raylib.GetScreenHeight()
+            );
+            Raylib.DrawTexturePro(
+                sceneTarget.Texture,
+                sourceRec,
+                destRec,
+                Vector2.Zero,
+                0.0f,
+                Color.White
+            );
+
+            // 3. Render Weapon on top (if not editor)
+            if (!isEditor)
+            {
+                Raylib.BeginMode3D(renderCamera);
+                RenderWeapon();
+                Raylib.EndMode3D();
+            }
+
+            // 4. Render UI
             Render2D(renderCamera, isEditor);
 
             Raylib.EndDrawing();
@@ -104,7 +162,7 @@ namespace DarkArmsProto.Systems
             return camera;
         }
 
-        private void Render3D(Camera3D camera, bool isEditor)
+        private void Render3DScene(Camera3D camera)
         {
             Raylib.BeginMode3D(camera);
 
@@ -120,14 +178,8 @@ namespace DarkArmsProto.Systems
             particleManager.Render();
             lightManager.Render(); // Dynamic lights (billboards)
 
-            // Render weapon (only if not in editor)
-            if (!isEditor)
-            {
-                RenderWeapon();
-            }
-
-            // Render debug colliders
-            if (showColliderDebug || isEditor)
+            // Debug colliders
+            if (showColliderDebug)
             {
                 RenderDebugColliders();
             }

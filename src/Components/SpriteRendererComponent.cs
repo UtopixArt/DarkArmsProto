@@ -45,6 +45,10 @@ namespace DarkArmsProto.Components
 
             Vector3 drawPos = Owner.Position + Offset;
 
+            // Disable depth writing for transparent sprites to avoid z-fighting/occlusion artifacts
+            // We still want depth testing so they are hidden by walls.
+            Rlgl.DisableDepthMask();
+
             // Draw billboard
             // Source rect is full texture
             Rectangle source = new Rectangle(0, 0, Texture.Width, Texture.Height);
@@ -52,6 +56,8 @@ namespace DarkArmsProto.Components
             // We can use DrawBillboardRec to specify a source rect if we had a spritesheet
             // But for now DrawBillboard is fine.
             Raylib.DrawBillboard(Game.GameCamera, Texture, drawPos, Size, drawColor);
+
+            Rlgl.EnableDepthMask();
         }
 
         // We should probably unload the texture when destroyed, but Component doesn't have OnDestroy yet.

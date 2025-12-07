@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text.Json;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
+using DarkArmsProto.Data;
 using DarkArmsProto.VFX;
 using DarkArmsProto.World;
 using Raylib_cs;
@@ -16,6 +17,8 @@ namespace DarkArmsProto.Systems
         Platform,
         Spawner,
         Light,
+        EntityInspector,
+        ParticleEditor, // New tool
     }
 
     public class MapEditor
@@ -24,6 +27,29 @@ namespace DarkArmsProto.Systems
 
         private Camera3D editorCamera;
         private EditorTool currentTool = EditorTool.Platform;
+
+        // Inspector settings
+        private GameObject? selectedEnemy;
+        private int inspectorMode = 0; // 0: Sprite Offset, 1: Sprite Size, 2: Collider Size, 3: Collider Offset
+        private float adjustStep = 0.1f;
+
+        // Particle Editor settings
+        private ParticleManager? particleManager;
+        private string currentParticleEffectName = "Explosion";
+        private int currentEmitterIndex = 0;
+        private int particlePropertyIndex = 0; // 0: Count, 1: MinSpeed, 2: MaxSpeed, 3: MinLife, 4: MaxLife, 5: Gravity, 6: Spread, 7: Radius
+        private List<string> particleEffectNames = new List<string>();
+        private bool isLooping = false;
+
+        // Preview Loop Recycling
+        private class PreviewParticle
+        {
+            public GameObject Go;
+            public ParticleEmitterData Source;
+            public Vector3 Origin;
+        }
+
+        private List<PreviewParticle> previewParticles = new List<PreviewParticle>();
 
         // Preview settings
         private Vector3 previewSize = new Vector3(2, 1, 2);
@@ -74,6 +100,11 @@ namespace DarkArmsProto.Systems
             this.lightManager = lm;
         }
 
+        public void SetParticleManager(ParticleManager pm)
+        {
+            this.particleManager = pm;
+        }
+
         public void Toggle(Room room, Camera3D gameCamera)
         {
             IsActive = !IsActive;
@@ -85,6 +116,16 @@ namespace DarkArmsProto.Systems
                 editorCamera = gameCamera;
                 Raylib.EnableCursor();
                 Console.WriteLine("Editor Mode: ON");
+
+                // Refresh particle list
+                particleEffectNames = Data.ParticleDatabase.GetEffectNames();
+                if (
+                    particleEffectNames.Count > 0
+                    && !particleEffectNames.Contains(currentParticleEffectName)
+                )
+                {
+                    currentParticleEffectName = particleEffectNames[0];
+                }
             }
             else
             {
@@ -144,9 +185,21 @@ namespace DarkArmsProto.Systems
                 currentTool = EditorTool.Spawner;
             if (Raylib.IsKeyPressed(KeyboardKey.Three))
                 currentTool = EditorTool.Light;
+            if (Raylib.IsKeyPressed(KeyboardKey.Four))
+                currentTool = EditorTool.EntityInspector;
+            if (Raylib.IsKeyPressed(KeyboardKey.Five))
+                currentTool = EditorTool.ParticleEditor;
 
             // Tool Settings
-            if (currentTool == EditorTool.Platform)
+            if (currentTool == EditorTool.EntityInspector)
+            {
+                HandleInspectorInput();
+            }
+            else if (currentTool == EditorTool.ParticleEditor)
+            {
+                HandleParticleEditorInput();
+            }
+            else if (currentTool == EditorTool.Platform)
             {
                 // Resize platform
                 // Width (X)
@@ -246,6 +299,284 @@ namespace DarkArmsProto.Systems
             // Clear
             if (Raylib.IsKeyPressed(KeyboardKey.Delete))
                 ClearLayout();
+        }
+
+        private void HandleInspectorInput()
+        {
+            if (currentRoom == null || currentRoom.Enemies.Count == 0)
+                return;
+
+            // Cycle selection
+            if (Raylib.IsKeyPressed(KeyboardKey.Tab))
+            {
+                int index = selectedEnemy != null ? currentRoom.Enemies.IndexOf(selectedEnemy) : -1;
+                index = (index + 1) % currentRoom.Enemies.Count;
+                selectedEnemy = currentRoom.Enemies[index];
+            }
+
+            if (selectedEnemy == null)
+                selectedEnemy = currentRoom.Enemies[0];
+
+            // Change Mode
+            if (Raylib.IsKeyPressed(KeyboardKey.One))
+                inspectorMode = 0; // Sprite Offset
+            if (Raylib.IsKeyPressed(KeyboardKey.Two))
+                inspectorMode = 1; // Sprite Size
+            if (Raylib.IsKeyPressed(KeyboardKey.Three))
+                inspectorMode = 2; // Collider Size
+            if (Raylib.IsKeyPressed(KeyboardKey.Four))
+                inspectorMode = 3; // Collider Offset
+
+            // Adjust Step
+            if (Raylib.IsKeyPressed(KeyboardKey.KpAdd))
+                adjustStep *= 2f;
+            if (Raylib.IsKeyPressed(KeyboardKey.KpSubtract))
+                adjustStep /= 2f;
+
+            // Adjust Values
+            Vector3 adjustment = Vector3.Zero;
+            if (Raylib.IsKeyPressed(KeyboardKey.Right))
+                adjustment.X += adjustStep;
+            if (Raylib.IsKeyPressed(KeyboardKey.Left))
+                adjustment.X -= adjustStep;
+            if (Raylib.IsKeyPressed(KeyboardKey.Up))
+                adjustment.Z -= adjustStep; // Z is Up/Down in 2D plane logic usually, but here Up key -> -Z (forward)
+            if (Raylib.IsKeyPressed(KeyboardKey.Down))
+                adjustment.Z += adjustStep;
+            if (Raylib.IsKeyPressed(KeyboardKey.PageUp))
+                adjustment.Y += adjustStep;
+            if (Raylib.IsKeyPressed(KeyboardKey.PageDown))
+                adjustment.Y -= adjustStep;
+
+            if (adjustment != Vector3.Zero)
+            {
+                var sprite = selectedEnemy.GetComponent<SpriteRendererComponent>();
+                var collider = selectedEnemy.GetComponent<ColliderComponent>();
+
+                switch (inspectorMode)
+                {
+                    case 0: // Sprite Offset
+                        if (sprite != null)
+                            sprite.Offset += adjustment;
+                        break;
+                    case 1: // Sprite Size
+                        if (sprite != null)
+                            sprite.Size += adjustment.X + adjustment.Y + adjustment.Z; // Uniform scaling via any key
+                        break;
+                    case 2: // Collider Size
+                        if (collider != null)
+                            collider.Size += adjustment;
+                        break;
+                    case 3: // Collider Offset
+                        if (collider != null)
+                            collider.Offset += adjustment;
+                        break;
+                }
+            }
+
+            // Print JSON
+            if (Raylib.IsKeyPressed(KeyboardKey.P))
+            {
+                var sprite = selectedEnemy.GetComponent<SpriteRendererComponent>();
+                var collider = selectedEnemy.GetComponent<ColliderComponent>();
+                var ai = selectedEnemy.GetComponent<EnemyAIComponent>();
+
+                Console.WriteLine("=== ENEMY DATA JSON SNIPPET ===");
+                Console.WriteLine($"Type: {ai?.Type}");
+                if (sprite != null)
+                {
+                    Console.WriteLine($"\"sprite_size\": {sprite.Size:F2},");
+                    // Note: Sprite Offset is not in EnemyData currently, might need to add it if useful
+                    // But for now let's print it anyway
+                    Console.WriteLine($"// Sprite Offset: {sprite.Offset}");
+                }
+                if (collider != null)
+                {
+                    Console.WriteLine(
+                        $"\"collider_size\": [{collider.Size.X:F2}, {collider.Size.Y:F2}, {collider.Size.Z:F2}],"
+                    );
+                    Console.WriteLine($"// Collider Offset: {collider.Offset}");
+                }
+                Console.WriteLine("===============================");
+            }
+        }
+
+        private void HandleParticleEditorInput()
+        {
+            if (particleEffectNames.Count == 0)
+                return;
+
+            // Cycle Effects
+            if (Raylib.IsKeyPressed(KeyboardKey.Tab))
+            {
+                int index = particleEffectNames.IndexOf(currentParticleEffectName);
+                index = (index + 1) % particleEffectNames.Count;
+                currentParticleEffectName = particleEffectNames[index];
+            }
+
+            // Get current effect data
+            var effect = Data.ParticleDatabase.GetEffect(currentParticleEffectName);
+            if (effect == null || effect.Emitters.Count == 0)
+                return;
+            var emitter = effect.Emitters[currentEmitterIndex];
+
+            // Cycle Properties
+            if (Raylib.IsKeyPressed(KeyboardKey.Down))
+                particlePropertyIndex = (particlePropertyIndex + 1) % 13;
+            if (Raylib.IsKeyPressed(KeyboardKey.Up))
+                particlePropertyIndex = (particlePropertyIndex - 1 + 13) % 13;
+
+            // Adjust Values
+            float multiplier = Raylib.IsKeyDown(KeyboardKey.LeftShift) ? 5.0f : 1.0f;
+            float delta = 0;
+            if (Raylib.IsKeyPressed(KeyboardKey.Right))
+                delta = 1;
+            if (Raylib.IsKeyPressed(KeyboardKey.Left))
+                delta = -1;
+
+            if (delta != 0)
+            {
+                switch (particlePropertyIndex)
+                {
+                    case 0: // Count
+                        emitter.Count = Math.Max(1, emitter.Count + (int)(delta * 5 * multiplier));
+                        break;
+                    case 1: // MinSpeed
+                        emitter.MinSpeed += delta * 0.5f * multiplier;
+                        break;
+                    case 2: // MaxSpeed
+                        emitter.MaxSpeed += delta * 0.5f * multiplier;
+                        break;
+                    case 3: // MinLifetime
+                        emitter.MinLifetime += delta * 0.1f * multiplier;
+                        break;
+                    case 4: // MaxLifetime
+                        emitter.MaxLifetime += delta * 0.1f * multiplier;
+                        break;
+                    case 5: // MinSize
+                        emitter.MinSize = Math.Max(0.01f, emitter.MinSize + delta * 0.05f * multiplier);
+                        break;
+                    case 6: // MaxSize
+                        emitter.MaxSize = Math.Max(0.01f, emitter.MaxSize + delta * 0.05f * multiplier);
+                        break;
+                    case 7: // Gravity
+                        emitter.Gravity += delta * 1.0f * multiplier;
+                        break;
+                    case 8: // Spread X
+                        emitter.Spread = new SerializedVector3(
+                            emitter.Spread.X + delta * 0.1f * multiplier,
+                            emitter.Spread.Y,
+                            emitter.Spread.Z
+                        );
+                        break;
+                    case 9: // Spread Y
+                        emitter.Spread = new SerializedVector3(
+                            emitter.Spread.X,
+                            emitter.Spread.Y + delta * 0.1f * multiplier,
+                            emitter.Spread.Z
+                        );
+                        break;
+                    case 10: // Spread Z
+                        emitter.Spread = new SerializedVector3(
+                            emitter.Spread.X,
+                            emitter.Spread.Y,
+                            emitter.Spread.Z + delta * 0.1f * multiplier
+                        );
+                        break;
+                    case 11: // Radius
+                        emitter.InitialRadius = Math.Max(
+                            0,
+                            emitter.InitialRadius + delta * 0.1f * multiplier
+                        );
+                        break;
+                    case 12: // Drag
+                        emitter.Drag = Math.Clamp(
+                            emitter.Drag + delta * 0.01f * multiplier,
+                            0.01f,
+                            1.0f
+                        );
+                        break;
+                }
+            }
+
+            // Spawn Test
+            if (
+                Raylib.IsMouseButtonPressed(MouseButton.Left)
+                || Raylib.IsKeyPressed(KeyboardKey.Space)
+            )
+            {
+                Vector3 pos = GetPlacementPosition();
+                particleManager?.SpawnEffect(currentParticleEffectName, pos);
+            }
+
+            // Loop Toggle
+            if (Raylib.IsKeyPressed(KeyboardKey.L))
+            {
+                isLooping = !isLooping;
+                if (!isLooping)
+                {
+                    previewParticles.Clear();
+                }
+                else
+                {
+                    // Initialize Loop Pool
+                    previewParticles.Clear();
+                    Vector3 pos = GetPlacementPosition();
+                    foreach (var e in effect.Emitters)
+                    {
+                        for (int i = 0; i < e.Count; i++)
+                        {
+                            var go = particleManager?.CreateParticleObject(e, pos);
+                            if (go != null)
+                            {
+                                previewParticles.Add(
+                                    new PreviewParticle
+                                    {
+                                        Go = go,
+                                        Source = e,
+                                        Origin = pos,
+                                    }
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Handle Loop (Recycling)
+            if (isLooping && particleManager != null)
+            {
+                // Update existing particles
+                for (int i = 0; i < previewParticles.Count; i++)
+                {
+                    var p = previewParticles[i];
+                    p.Go.Update(Raylib.GetFrameTime());
+
+                    if (!p.Go.IsActive)
+                    {
+                        // Respawn
+                        // We create a new object because resetting the old one is tricky without a Reset method on Component
+                        // But we keep the slot in the list
+                        var newGo = particleManager.CreateParticleObject(p.Source, p.Origin);
+                        p.Go = newGo;
+                    }
+                }
+
+                // Note: If Count changes in editor, we don't update the pool size dynamically here for simplicity.
+                // User can toggle L off/on to refresh count.
+            }
+
+            // Save
+            if (
+                Raylib.IsKeyPressed(KeyboardKey.S)
+                && (
+                    Raylib.IsKeyDown(KeyboardKey.LeftControl)
+                    || Raylib.IsKeyDown(KeyboardKey.RightControl)
+                )
+            )
+            {
+                Data.ParticleDatabase.Save();
+            }
         }
 
         private void UndoLastAction()
@@ -440,6 +771,15 @@ namespace DarkArmsProto.Systems
             Color previewColor = Color.Green;
             Vector3 size = Vector3.One;
 
+            // Render Loop Particles
+            if (isLooping && currentTool == EditorTool.ParticleEditor)
+            {
+                foreach (var p in previewParticles)
+                {
+                    p.Go.Render();
+                }
+            }
+
             if (currentTool == EditorTool.Platform)
             {
                 size = previewSize;
@@ -590,6 +930,136 @@ namespace DarkArmsProto.Systems
                     20,
                     Color.White
                 );
+            }
+
+            if (currentTool == EditorTool.EntityInspector)
+            {
+                if (selectedEnemy != null)
+                {
+                    var ai = selectedEnemy.GetComponent<EnemyAIComponent>();
+                    var sprite = selectedEnemy.GetComponent<SpriteRendererComponent>();
+                    var collider = selectedEnemy.GetComponent<ColliderComponent>();
+
+                    Raylib.DrawText(
+                        $"Selected: {ai?.Type} (TAB to cycle)",
+                        10,
+                        70,
+                        20,
+                        Color.Yellow
+                    );
+
+                    string modeStr = inspectorMode switch
+                    {
+                        0 => "Sprite Offset (1)",
+                        1 => "Sprite Size (2)",
+                        2 => "Collider Size (3)",
+                        3 => "Collider Offset (4)",
+                        _ => "Unknown",
+                    };
+                    Raylib.DrawText($"Mode: {modeStr}", 10, 95, 20, Color.Green);
+                    Raylib.DrawText($"Step (+/-): {adjustStep}", 300, 95, 20, Color.Gray);
+
+                    if (sprite != null)
+                        Raylib.DrawText(
+                            $"Sprite: Size={sprite.Size:F2} Offset={sprite.Offset}",
+                            10,
+                            120,
+                            18,
+                            Color.White
+                        );
+                    if (collider != null)
+                        Raylib.DrawText(
+                            $"Collider: Size={collider.Size} Offset={collider.Offset}",
+                            10,
+                            140,
+                            18,
+                            Color.White
+                        );
+
+                    Raylib.DrawText(
+                        "Arrows/PgUp/PgDn: Adjust | P: Print JSON",
+                        10,
+                        165,
+                        18,
+                        Color.Gray
+                    );
+
+                    // Draw selection highlight
+                    Vector3 pos = selectedEnemy.Position;
+                    Raylib.BeginMode3D(editorCamera);
+                    Raylib.DrawCubeWires(pos, 1f, 2f, 1f, Color.Yellow);
+                    Raylib.EndMode3D();
+                }
+                else
+                {
+                    Raylib.DrawText("No enemies in room", 10, 70, 20, Color.Red);
+                }
+            }
+
+            if (currentTool == EditorTool.ParticleEditor)
+            {
+                var effect = Data.ParticleDatabase.GetEffect(currentParticleEffectName);
+                if (effect != null && effect.Emitters.Count > 0)
+                {
+                    var emitter = effect.Emitters[currentEmitterIndex];
+                    Raylib.DrawText(
+                        $"Effect: {currentParticleEffectName} (TAB)",
+                        10,
+                        70,
+                        20,
+                        Color.Yellow
+                    );
+
+                    string[] props = new string[]
+                    {
+                        $"Count: {emitter.Count}",
+                        $"MinSpeed: {emitter.MinSpeed:F1}",
+                        $"MaxSpeed: {emitter.MaxSpeed:F1}",
+                        $"MinLife: {emitter.MinLifetime:F1}",
+                        $"MaxLife: {emitter.MaxLifetime:F1}",
+                        $"MinSize: {emitter.MinSize:F2}",
+                        $"MaxSize: {emitter.MaxSize:F2}",
+                        $"Gravity: {emitter.Gravity:F1}",
+                        $"Spread X: {emitter.Spread.X:F1}",
+                        $"Spread Y: {emitter.Spread.Y:F1}",
+                        $"Spread Z: {emitter.Spread.Z:F1}",
+                        $"Radius: {emitter.InitialRadius:F1}",
+                        $"Drag: {emitter.Drag:F2}",
+                    };
+
+                    for (int i = 0; i < props.Length; i++)
+                    {
+                        Color c = (i == particlePropertyIndex) ? Color.Green : Color.White;
+                        Raylib.DrawText(props[i], 10, 100 + i * 25, 20, c);
+                    }
+
+                    Raylib.DrawText(
+                        "Arrows: Adjust | Space/Click: Spawn | Ctrl+S: Save",
+                        10,
+                        400,
+                        20,
+                        Color.Gray
+                    );
+                    Raylib.DrawText(
+                        $"Loop (L): {(isLooping ? "ON" : "OFF")}",
+                        10,
+                        425,
+                        20,
+                        isLooping ? Color.Green : Color.Red
+                    );
+
+                    // Draw preview cursor
+                    Vector3 pos = GetPlacementPosition();
+                    Raylib.BeginMode3D(editorCamera);
+                    Raylib.DrawSphereWires(
+                        pos,
+                        emitter.InitialRadius > 0 ? emitter.InitialRadius : 0.2f,
+                        8,
+                        8,
+                        Color.Orange
+                    );
+                    Raylib.EndMode3D();
+                }
             }
 
             Raylib.DrawText(

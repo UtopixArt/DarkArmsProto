@@ -16,9 +16,11 @@ namespace DarkArmsProto.Data
         public bool IsRanged { get; set; } = false;
         public string SpritePath { get; set; } = "";
         public float SpriteSize { get; set; } = 3.5f;
+        public float[] SpriteOffset { get; set; } = { 0f, 0f, 0f };
         public int[] Color { get; set; } = { 255, 255, 255, 255 };
         public float[] MeshSize { get; set; } = { 1.5f, 4.5f, 1.5f };
         public float[] ColliderSize { get; set; } = { 0.75f, 2.25f, 0.75f };
+        public float[] ColliderOffset { get; set; } = { 0f, 0f, 0f };
 
         public Raylib_cs.Color GetColor()
         {
@@ -35,9 +37,23 @@ namespace DarkArmsProto.Data
             return new Vector3(MeshSize[0], MeshSize[1], MeshSize[2]);
         }
 
+        public Vector3 GetSpriteOffset()
+        {
+            if (SpriteOffset == null || SpriteOffset.Length < 3)
+                return Vector3.Zero;
+            return new Vector3(SpriteOffset[0], SpriteOffset[1], SpriteOffset[2]);
+        }
+
         public Vector3 GetColliderSize()
         {
             return new Vector3(ColliderSize[0], ColliderSize[1], ColliderSize[2]);
+        }
+
+        public Vector3 GetColliderOffset()
+        {
+            if (ColliderOffset == null || ColliderOffset.Length < 3)
+                return Vector3.Zero;
+            return new Vector3(ColliderOffset[0], ColliderOffset[1], ColliderOffset[2]);
         }
 
         public Core.SoulType GetSoulType()

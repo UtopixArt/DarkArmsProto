@@ -25,7 +25,10 @@ namespace DarkArmsProto.Components.AI
             }
 
             // Randomly switch to Wander
-            if (enemy.Random.NextDouble() < 0.01f)
+            // Beasts patrol more aggressively
+            double wanderChance = (enemy.Type == SoulType.Beast) ? 0.05 : 0.01;
+
+            if (enemy.Random.NextDouble() < wanderChance)
             {
                 enemy.ChangeState(new WanderState());
             }
@@ -44,11 +47,15 @@ namespace DarkArmsProto.Components.AI
 
         public void Enter(EnemyAIComponent enemy)
         {
-            timer = (float)enemy.Random.NextDouble() * 2.0f + 1.0f;
+            // Beasts wander much longer and further
+            float durationMult = (enemy.Type == SoulType.Beast) ? 3.0f : 1.0f;
+            float distMult = (enemy.Type == SoulType.Beast) ? 5.0f : 1.0f;
+
+            timer = ((float)enemy.Random.NextDouble() * 2.0f + 1.0f) * durationMult;
 
             // Pick a random point around current pos
             float angle = (float)enemy.Random.NextDouble() * MathF.PI * 2;
-            float dist = (float)enemy.Random.NextDouble() * 3.0f + 1.0f;
+            float dist = ((float)enemy.Random.NextDouble() * 3.0f + 1.0f) * distMult;
             targetPos =
                 enemy.Owner.Position + new Vector3(MathF.Cos(angle), 0, MathF.Sin(angle)) * dist;
         }

@@ -63,7 +63,7 @@ namespace DarkArmsProto.Systems
                     {
                         var mesh = proj.GetComponent<MeshRendererComponent>();
                         Color color = mesh != null ? mesh.Color : Color.Yellow;
-                        VFXHelper.SpawnImpact(pos, color, 5);
+                        VFXHelper.SpawnImpact(pos, color, 200);
                     };
                 }
             }

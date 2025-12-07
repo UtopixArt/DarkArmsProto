@@ -34,8 +34,9 @@ namespace DarkArmsProto.Factories
                 .WithAttackRange(enemyData.AttackRange)
                 .WithDetectionRange(enemyData.DetectionRange)
                 .WithAttackCooldown(enemyData.AttackCooldown)
-                .WithSprite(enemyData.SpritePath, enemyData.SpriteSize)
-                .WithColliderSize(enemyData.GetColliderSize());
+                .WithSprite(enemyData.SpritePath, enemyData.SpriteSize, enemyData.GetSpriteOffset())
+                .WithColliderSize(enemyData.GetColliderSize())
+                .WithColliderOffset(enemyData.GetColliderOffset());
 
             if (enemyData.IsFlying)
                 builder.AsFlying();

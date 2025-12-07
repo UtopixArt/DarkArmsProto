@@ -56,8 +56,58 @@ namespace DarkArmsProto.Components
                 behavior.Update(Owner, this, deltaTime);
             }
 
-            // Apply velocity
-            Owner.Position += Velocity * deltaTime;
+            // Calculate movement
+            Vector3 moveAmount = Velocity * deltaTime;
+            float moveDistance = moveAmount.Length();
+
+            // Raycast check for walls to prevent tunneling
+            if (WallColliders != null && moveDistance > 0.001f)
+            {
+                Vector3 moveDir = Vector3.Normalize(moveAmount);
+                float closestHit = float.MaxValue;
+                Vector3 hitPoint = Vector3.Zero;
+                bool hitWall = false;
+
+                foreach (var wall in WallColliders)
+                {
+                    if (
+                        wall.Raycast(
+                            Owner.Position,
+                            moveDir,
+                            moveDistance,
+                            out float dist,
+                            out Vector3 normal,
+                            out Vector3 point
+                        )
+                    )
+                    {
+                        if (dist < closestHit)
+                        {
+                            closestHit = dist;
+                            hitPoint = point;
+                            hitWall = true;
+                        }
+                    }
+                }
+
+                if (hitWall)
+                {
+                    // Move to hit point
+                    Owner.Position = hitPoint;
+
+                    // Handle collision
+                    bool shouldDestroy = OnWallHit(hitPoint);
+                    if (shouldDestroy)
+                    {
+                        Owner.IsActive = false;
+                        OnWallHitEvent?.Invoke(hitPoint);
+                        return; // Stop updating
+                    }
+                }
+            }
+
+            // Apply velocity (if no hit or not destroyed)
+            Owner.Position += moveAmount;
 
             // Update lifetime
             Lifetime -= deltaTime;
@@ -66,20 +116,20 @@ namespace DarkArmsProto.Components
                 Owner.IsActive = false;
             }
 
-            // Check wall collisions
+            // Fallback: Check point collision if we somehow ended up inside a wall
+            // (e.g. spawned inside, or raycast missed due to precision)
             if (WallColliders != null)
             {
                 foreach (var wall in WallColliders)
                 {
                     if (wall.CheckPointCollision(Owner.Position))
                     {
-                        // Delegate to behaviors
                         bool shouldDestroy = OnWallHit(Owner.Position);
-
                         if (shouldDestroy)
                         {
                             Owner.IsActive = false;
                             OnWallHitEvent?.Invoke(Owner.Position);
+                            return;
                         }
                         break;
                     }
@@ -164,6 +214,11 @@ namespace DarkArmsProto.Components
                 // Impact VFX
                 var mesh = Owner.GetComponent<MeshRendererComponent>();
                 Raylib_cs.Color color = mesh != null ? mesh.Color : Raylib_cs.Color.White;
+
+                // Spawn blood
+                VFX.VFXHelper.SpawnBlood(Owner.Position);
+
+                // Spawn impact
                 VFX.VFXHelper.SpawnImpact(Owner.Position, color, 10);
 
                 // Check if enemy died - handled by EnemyDeathComponent now

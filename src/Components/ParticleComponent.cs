@@ -12,6 +12,7 @@ namespace DarkArmsProto.Components
         public float Size { get; set; } = 0.2f;
         public float Lifetime { get; set; } = 1f;
         public float Gravity { get; set; } = -5f;
+        public float Drag { get; set; } = 0.95f;
         private float currentLifetime;
         private float initialLifetime;
 
@@ -32,8 +33,10 @@ namespace DarkArmsProto.Components
             // Apply gravity
             Velocity += new Vector3(0, Gravity * deltaTime, 0);
 
-            // Apply drag (air resistance)
-            Velocity *= 0.95f;
+            // Apply drag (air resistance) - Frame-rate independent
+            // Drag is defined as "velocity retained per frame at 60 FPS"
+            float timeCorrectedDrag = MathF.Pow(Drag, deltaTime * 60.0f);
+            Velocity *= timeCorrectedDrag;
 
             // Update lifetime
             currentLifetime -= deltaTime;

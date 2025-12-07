@@ -34,14 +34,14 @@ namespace DarkArmsProto.Systems
 
         public void TriggerExplosion(Vector3 position, float radius, float damage)
         {
-            // Explosion VFX
-            VFXHelper.SpawnExplosion(position, Color.Orange, 50);
+            // Explosion VFX - Let JSON decide color (pass null)
+            VFXHelper.SpawnExplosion(position, null, 200);
 
             // Screen shake
             var screenShake = player.GetComponent<ScreenShakeComponent>();
             if (screenShake != null)
             {
-                screenShake.AddTrauma(0.5f);
+                screenShake.AddTrauma(0.18f);
             }
 
             // Damage enemies
@@ -57,7 +57,9 @@ namespace DarkArmsProto.Systems
                     {
                         // TakeDamage will trigger OnDeath event which handles VFX/souls via EnemyDeathComponent
                         health.TakeDamage(damage);
-                        // Damage numbers are handled by HealthComponent.OnDamageTakenWithPosition event
+
+                        // Manually add damage number since HealthComponent event might not be hooked up globally
+                        DamageNumberManager.AddDamageNumber(enemy.Position, damage);
                     }
                 }
             }

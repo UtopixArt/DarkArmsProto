@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using DarkArmsProto.Audio;
+using DarkArmsProto.Builders;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
 using DarkArmsProto.Factories;
@@ -63,8 +64,10 @@ namespace DarkArmsProto
 
             // Initialize managers
             particleManager = new ParticleManager();
-            lightManager = new LightManager();
-            lightManager.Initialize();
+
+            // Use Builder for LightManager
+            lightManager = new LightManagerBuilder().WithAmbientLight(0.05f, 0.05f, 0.05f).Build();
+
             soulManager = new SoulManager(player.GetComponent<WeaponComponent>());
             soulManager.SetParticleManager(particleManager);
             enemySpawner = new EnemyFactory();
@@ -83,6 +86,7 @@ namespace DarkArmsProto
             gameUI = new GameUI(player, roomManager);
             mapEditor = new MapEditor();
             mapEditor.SetLightManager(lightManager);
+            mapEditor.SetParticleManager(particleManager);
 
             roomManager.SetLightManager(lightManager);
 
@@ -122,17 +126,17 @@ namespace DarkArmsProto
                 }
             }
 
+            // Toggle collider debug with F3 (Always available)
+            if (Raylib.IsKeyPressed(KeyboardKey.F3))
+            {
+                renderSystem.ShowColliderDebug = !renderSystem.ShowColliderDebug;
+            }
+
             if (mapEditor.IsActive)
             {
                 mapEditor.Update(deltaTime);
                 GameCamera = mapEditor.GetCamera();
                 return; // Skip game update
-            }
-
-            // Toggle collider debug with F3
-            if (Raylib.IsKeyPressed(KeyboardKey.F3))
-            {
-                renderSystem.ShowColliderDebug = !renderSystem.ShowColliderDebug;
             }
 
             // Update player
@@ -206,6 +210,7 @@ namespace DarkArmsProto
         {
             AudioManager.Instance.Cleanup();
             lightManager.Cleanup();
+            renderSystem.Cleanup();
         }
     }
 }

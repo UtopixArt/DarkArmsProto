@@ -42,7 +42,7 @@ namespace DarkArmsProto.Factories
                 AudioManager.Instance.PlaySound(SoundType.Hit, 0.5f);
 
                 var shake = player.GetComponent<ScreenShakeComponent>();
-                shake?.AddTrauma(0.5f);
+                shake?.AddTrauma(0.18f);
             };
 
             // Collider

@@ -37,6 +37,9 @@ namespace DarkArmsProto.Builders
         private float lifestealPercent = 0.3f;
         private Action<float>? healCallback = null;
 
+        private bool addTrail = false;
+        private Color trailColor = Color.White;
+
         public ProjectileBuilder() { }
 
         // === POSITION & VELOCITY ===
@@ -123,6 +126,13 @@ namespace DarkArmsProto.Builders
             return this;
         }
 
+        public ProjectileBuilder WithTrail(Color color)
+        {
+            this.addTrail = true;
+            this.trailColor = color;
+            return this;
+        }
+
         // === BUILD ===
 
         public GameObject Build()
@@ -158,6 +168,11 @@ namespace DarkArmsProto.Builders
             if (addLifesteal)
             {
                 projComp.AddBehavior(new LifestealBehavior(lifestealPercent, healCallback));
+            }
+
+            if (addTrail)
+            {
+                projComp.AddBehavior(new TrailBehavior(trailColor));
             }
 
             projectile.AddComponent(projComp);

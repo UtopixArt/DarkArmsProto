@@ -48,7 +48,7 @@ namespace DarkArmsProto.World
         public List<GameObject> InteriorObjects { get; private set; }
         public List<DynamicLight> RoomLights { get; private set; }
 
-        private const float RoomWorldSize = 40f;
+        private const float RoomWorldSize = 80f;
 
         public Room(Vector2 gridPosition, RoomType type)
         {
@@ -181,12 +181,14 @@ namespace DarkArmsProto.World
         private Vector3 GetDoorPosition(Direction direction)
         {
             float halfSize = GameConfig.RoomSize / 2f;
+            float doorOffset = 0.5f; // Offset inside the room so it stands in front of the wall
+
             Vector3 offset = direction switch
             {
-                Direction.North => new Vector3(0, 0, -halfSize),
-                Direction.South => new Vector3(0, 0, halfSize),
-                Direction.East => new Vector3(halfSize, 0, 0),
-                Direction.West => new Vector3(-halfSize, 0, 0),
+                Direction.North => new Vector3(0, 0, -halfSize + doorOffset),
+                Direction.South => new Vector3(0, 0, halfSize - doorOffset),
+                Direction.East => new Vector3(halfSize - doorOffset, 0, 0),
+                Direction.West => new Vector3(-halfSize + doorOffset, 0, 0),
                 _ => Vector3.Zero,
             };
 
@@ -258,38 +260,93 @@ namespace DarkArmsProto.World
             for (int i = 0; i < count; i++)
             {
                 // 1. Choose a spawn surface (Floor or Platform)
-                Vector3 spawnPos;
+                Vector3 spawnPos = Vector3.Zero;
+                bool validPos = false;
+                int attempts = 0;
 
-                // 50% chance to spawn on a platform if available
-                if (InteriorObjects.Count > 0 && rng.NextDouble() > 0.5)
+                while (!validPos && attempts < 20)
                 {
-                    var platform = InteriorObjects[rng.Next(InteriorObjects.Count)];
-                    var collider = platform.GetComponent<ColliderComponent>();
-                    if (collider != null)
+                    attempts++;
+
+                    // 50% chance to spawn on a platform if available
+                    if (InteriorObjects.Count > 0 && rng.NextDouble() > 0.5)
                     {
-                        // Spawn on top of the platform
-                        var (min, max) = collider.GetBounds();
-                        float x = (float)(rng.NextDouble() * (max.X - min.X) + min.X);
-                        float z = (float)(rng.NextDouble() * (max.Z - min.Z) + min.Z);
-                        spawnPos = new Vector3(x, max.Y, z); // Exact top surface
+                        var platform = InteriorObjects[rng.Next(InteriorObjects.Count)];
+                        var collider = platform.GetComponent<ColliderComponent>();
+                        if (collider != null)
+                        {
+                            // Spawn on top of the platform
+                            var (min, max) = collider.GetBounds();
+                            float x = (float)(rng.NextDouble() * (max.X - min.X) + min.X);
+                            float z = (float)(rng.NextDouble() * (max.Z - min.Z) + min.Z);
+                            spawnPos = new Vector3(x, max.Y, z); // Exact top surface
+                        }
+                        else
+                        {
+                            // Fallback to floor
+                            float range = GameConfig.RoomSize / 2f - 4f;
+                            float offsetX = (float)(rng.NextDouble() * 2 - 1) * range;
+                            float offsetZ = (float)(rng.NextDouble() * 2 - 1) * range;
+                            spawnPos = WorldPosition + new Vector3(offsetX, 0, offsetZ);
+                        }
                     }
                     else
                     {
-                        // Fallback to floor
+                        // Spawn on floor
                         float range = GameConfig.RoomSize / 2f - 4f;
                         float offsetX = (float)(rng.NextDouble() * 2 - 1) * range;
                         float offsetZ = (float)(rng.NextDouble() * 2 - 1) * range;
                         spawnPos = WorldPosition + new Vector3(offsetX, 0, offsetZ);
                     }
+
+                    // Check if position is clear of obstacles
+                    // Create a temporary collider check
+                    // spawnPos is the feet position. We check the volume above it.
+                    Vector3 checkHalfSize = new Vector3(0.5f, 1.0f, 0.5f); // Approx enemy half-size
+                    Vector3 checkCenter = spawnPos + new Vector3(0, checkHalfSize.Y, 0);
+
+                    Vector3 checkMin = checkCenter - checkHalfSize;
+                    Vector3 checkMax = checkCenter + checkHalfSize;
+
+                    // Lift slightly to avoid floor collision (floor is at spawnPos.Y and below)
+                    checkMin.Y += 0.2f;
+
+                    bool collision = false;
+                    foreach (var wall in WallColliders)
+                    {
+                        var (wMin, wMax) = wall.GetBounds();
+                        if (CheckAABB(checkMin, checkMax, wMin, wMax))
+                        {
+                            collision = true;
+                            break;
+                        }
+                    }
+
+                    if (!collision)
+                    {
+                        foreach (var obj in InteriorObjects)
+                        {
+                            var objCol = obj.GetComponent<ColliderComponent>();
+                            if (objCol != null)
+                            {
+                                var (oMin, oMax) = objCol.GetBounds();
+                                if (CheckAABB(checkMin, checkMax, oMin, oMax))
+                                {
+                                    collision = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!collision)
+                    {
+                        validPos = true;
+                    }
                 }
-                else
-                {
-                    // Spawn on floor
-                    float range = GameConfig.RoomSize / 2f - 4f;
-                    float offsetX = (float)(rng.NextDouble() * 2 - 1) * range;
-                    float offsetZ = (float)(rng.NextDouble() * 2 - 1) * range;
-                    spawnPos = WorldPosition + new Vector3(offsetX, 0, offsetZ);
-                }
+
+                if (!validPos)
+                    continue; // Skip this enemy if no valid pos found
 
                 // 2. Choisir un type d'ennemi
                 SoulType soulType;
@@ -320,6 +377,23 @@ namespace DarkArmsProto.World
 
                 Enemies.Add(enemy);
             }
+
+            // Share enemy list for avoidance
+            foreach (var enemy in Enemies)
+            {
+                var ai = enemy.GetComponent<EnemyAIComponent>();
+                if (ai != null)
+                {
+                    ai.RoomEnemies = Enemies;
+                }
+            }
+        }
+
+        private bool CheckAABB(Vector3 minA, Vector3 maxA, Vector3 minB, Vector3 maxB)
+        {
+            return (minA.X <= maxB.X && maxA.X >= minB.X)
+                && (minA.Y <= maxB.Y && maxA.Y >= minB.Y)
+                && (minA.Z <= maxB.Z && maxA.Z >= minB.Z);
         }
 
         public void UpdateEnemies(float deltaTime, GameObject player)
@@ -405,49 +479,104 @@ namespace DarkArmsProto.World
         )
         {
             bool hasDoor = HasConnection(direction);
-            // float doorWidth = 4f;
-            Vector3 wallPos = WorldPosition + new Vector3(0, wallHeight / 2f, 0);
-
-            // Logique de rendu des murs (inchangée pour la brièveté, mais nécessaire)
-            // Je remets le code simplifié pour que ça compile, assurez-vous de garder votre logique de rendu existante si elle est plus complexe
-
-            Vector3 size = Vector3.Zero;
-            Vector3 pos = wallPos;
-
-            switch (direction)
-            {
-                case Direction.North:
-                    pos.Z -= halfSize;
-                    size = new Vector3(GameConfig.RoomSize, wallHeight, 0.5f);
-                    break;
-                case Direction.South:
-                    pos.Z += halfSize;
-                    size = new Vector3(GameConfig.RoomSize, wallHeight, 0.5f);
-                    break;
-                case Direction.East:
-                    pos.X += halfSize;
-                    size = new Vector3(0.5f, wallHeight, GameConfig.RoomSize);
-                    break;
-                case Direction.West:
-                    pos.X -= halfSize;
-                    size = new Vector3(0.5f, wallHeight, GameConfig.RoomSize);
-                    break;
-            }
+            float doorWidth = 4f;
+            float doorHeight = 3f;
 
             if (!hasDoor)
             {
-                Raylib_cs.Raylib.DrawCubeV(pos, size, wallColor);
+                Vector3 size = Vector3.Zero;
+                Vector3 pos = WorldPosition + new Vector3(0, wallHeight / 2f, 0);
+
+                switch (direction)
+                {
+                    case Direction.North:
+                        pos.Z -= halfSize;
+                        size = new Vector3(GameConfig.RoomSize, wallHeight, 0.5f);
+                        break;
+                    case Direction.South:
+                        pos.Z += halfSize;
+                        size = new Vector3(GameConfig.RoomSize, wallHeight, 0.5f);
+                        break;
+                    case Direction.East:
+                        pos.X += halfSize;
+                        size = new Vector3(0.5f, wallHeight, GameConfig.RoomSize);
+                        break;
+                    case Direction.West:
+                        pos.X -= halfSize;
+                        size = new Vector3(0.5f, wallHeight, GameConfig.RoomSize);
+                        break;
+                }
+                Raylib.DrawCubeV(pos, size, wallColor);
             }
             else
             {
-                // Dessiner deux segments pour laisser un trou pour la porte
-                // (Simplification ici, reprenez votre code de rendu de mur détaillé si besoin)
-                // Pour l'instant je dessine juste des piliers pour marquer la porte
-                Raylib_cs.Raylib.DrawCubeV(
-                    pos,
-                    size * new Vector3(1, 0.3f, 1) + new Vector3(0, wallHeight / 2, 0),
-                    wallColor
-                ); // Linteau
+                // Draw wall with hole for door
+                float roomSize = GameConfig.RoomSize;
+                float sideWidth = (roomSize - doorWidth) / 2f;
+                float sideCenterOffset = (doorWidth + sideWidth) / 2f;
+
+                // Top part (header)
+                float headerHeight = wallHeight - doorHeight;
+                float headerY = doorHeight + headerHeight / 2f;
+
+                Vector3 basePos = WorldPosition;
+
+                if (direction == Direction.North || direction == Direction.South)
+                {
+                    float z = (direction == Direction.North) ? -halfSize : halfSize;
+
+                    // Left side
+                    Raylib.DrawCubeV(
+                        basePos + new Vector3(-sideCenterOffset, wallHeight / 2f, z),
+                        new Vector3(sideWidth, wallHeight, 0.5f),
+                        wallColor
+                    );
+
+                    // Right side
+                    Raylib.DrawCubeV(
+                        basePos + new Vector3(sideCenterOffset, wallHeight / 2f, z),
+                        new Vector3(sideWidth, wallHeight, 0.5f),
+                        wallColor
+                    );
+
+                    // Header
+                    if (headerHeight > 0)
+                    {
+                        Raylib.DrawCubeV(
+                            basePos + new Vector3(0, headerY, z),
+                            new Vector3(doorWidth, headerHeight, 0.5f),
+                            wallColor
+                        );
+                    }
+                }
+                else // East or West
+                {
+                    float x = (direction == Direction.West) ? -halfSize : halfSize;
+
+                    // Side 1 (Negative Z)
+                    Raylib.DrawCubeV(
+                        basePos + new Vector3(x, wallHeight / 2f, -sideCenterOffset),
+                        new Vector3(0.5f, wallHeight, sideWidth),
+                        wallColor
+                    );
+
+                    // Side 2 (Positive Z)
+                    Raylib.DrawCubeV(
+                        basePos + new Vector3(x, wallHeight / 2f, sideCenterOffset),
+                        new Vector3(0.5f, wallHeight, sideWidth),
+                        wallColor
+                    );
+
+                    // Header
+                    if (headerHeight > 0)
+                    {
+                        Raylib.DrawCubeV(
+                            basePos + new Vector3(x, headerY, 0),
+                            new Vector3(0.5f, headerHeight, doorWidth),
+                            wallColor
+                        );
+                    }
+                }
             }
         }
 
