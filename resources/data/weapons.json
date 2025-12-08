@@ -19,7 +19,7 @@
           ],
           "piercing": true,
           "lifesteal": false,
-          "homing": false,
+          "homing": true,
           "explosive": true,
           "explosion_radius": 12.0,
           "spread": 0.0

@@ -58,82 +58,13 @@ namespace DarkArmsProto.Components
 
             // Calculate movement
             Vector3 moveAmount = Velocity * deltaTime;
-            float moveDistance = moveAmount.Length();
-
-            // Raycast check for walls to prevent tunneling
-            if (WallColliders != null && moveDistance > 0.001f)
-            {
-                Vector3 moveDir = Vector3.Normalize(moveAmount);
-                float closestHit = float.MaxValue;
-                Vector3 hitPoint = Vector3.Zero;
-                bool hitWall = false;
-
-                foreach (var wall in WallColliders)
-                {
-                    if (
-                        wall.Raycast(
-                            Owner.Position,
-                            moveDir,
-                            moveDistance,
-                            out float dist,
-                            out Vector3 normal,
-                            out Vector3 point
-                        )
-                    )
-                    {
-                        if (dist < closestHit)
-                        {
-                            closestHit = dist;
-                            hitPoint = point;
-                            hitWall = true;
-                        }
-                    }
-                }
-
-                if (hitWall)
-                {
-                    // Move to hit point
-                    Owner.Position = hitPoint;
-
-                    // Handle collision
-                    bool shouldDestroy = OnWallHit(hitPoint);
-                    if (shouldDestroy)
-                    {
-                        Owner.IsActive = false;
-                        OnWallHitEvent?.Invoke(hitPoint);
-                        return; // Stop updating
-                    }
-                }
-            }
-
             // Apply velocity (if no hit or not destroyed)
             Owner.Position += moveAmount;
-
             // Update lifetime
             Lifetime -= deltaTime;
             if (Lifetime <= 0)
             {
                 Owner.IsActive = false;
-            }
-
-            // Fallback: Check point collision if we somehow ended up inside a wall
-            // (e.g. spawned inside, or raycast missed due to precision)
-            if (WallColliders != null)
-            {
-                foreach (var wall in WallColliders)
-                {
-                    if (wall.CheckPointCollision(Owner.Position))
-                    {
-                        bool shouldDestroy = OnWallHit(Owner.Position);
-                        if (shouldDestroy)
-                        {
-                            Owner.IsActive = false;
-                            OnWallHitEvent?.Invoke(Owner.Position);
-                            return;
-                        }
-                        break;
-                    }
-                }
             }
         }
 
@@ -167,7 +98,7 @@ namespace DarkArmsProto.Components
         {
             bool shouldDestroy = true; // Default: walls destroy projectiles
 
-            // Ask each behavior
+            // Ask each behavior and let them handle the wall hit
             foreach (var behavior in behaviors)
             {
                 bool behaviorDestroy = behavior.OnWallHit(Owner, this, hitPosition);
@@ -176,6 +107,7 @@ namespace DarkArmsProto.Components
                     shouldDestroy = false;
             }
 
+            // If no behaviors, default is to destroy
             return shouldDestroy;
         }
 
@@ -197,6 +129,11 @@ namespace DarkArmsProto.Components
             else if (IsEnemyProjectile && other.CompareTag("Player"))
             {
                 HandlePlayerHit(other);
+            }
+            // Any projectile hits wall
+            else if (other.CompareTag("Wall"))
+            {
+                HandleWallHit();
             }
         }
 
@@ -248,6 +185,26 @@ namespace DarkArmsProto.Components
             }
 
             Owner.IsActive = false;
+        }
+
+        private void HandleWallHit()
+        {
+            // Call OnWallHit to check if behaviors want to override destruction
+            bool shouldDestroy = OnWallHit(Owner.Position);
+
+            if (shouldDestroy)
+            {
+                // Spawn impact VFX at wall hit
+                var mesh = Owner.GetComponent<MeshRendererComponent>();
+                Raylib_cs.Color color = mesh != null ? mesh.Color : Raylib_cs.Color.White;
+                VFX.VFXHelper.SpawnImpact(Owner.Position, color, 5);
+
+                // Trigger event if registered
+                OnWallHitEvent?.Invoke(Owner.Position);
+
+                // Destroy projectile
+                Owner.IsActive = false;
+            }
         }
     }
 }

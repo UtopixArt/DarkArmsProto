@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using DarkArmsProto.Components; // Nécessaire pour HealthComponent et ChaseAIComponent
+using DarkArmsProto.Components;
 using DarkArmsProto.Core;
-using DarkArmsProto.Factories;
 using DarkArmsProto.VFX;
 using Raylib_cs;
 
@@ -38,11 +37,13 @@ namespace DarkArmsProto.World
         public Dictionary<Direction, Room?> Connections { get; private set; }
         public Dictionary<Direction, Door> Doors { get; private set; }
 
-        public List<GameObject> Enemies { get; private set; }
+        // Track initial enemy count for room clearing
         public int InitialEnemyCount { get; private set; }
+        private int remainingEnemies;
 
         // Wall colliders for physics
         public List<ColliderComponent> WallColliders { get; private set; }
+        public List<GameObject> WallGameObjects { get; private set; } = new List<GameObject>(); // Keep wall/floor GameObjects alive
 
         // Interior objects and lights
         public List<GameObject> InteriorObjects { get; private set; }
@@ -73,8 +74,8 @@ namespace DarkArmsProto.World
             };
 
             Doors = new Dictionary<Direction, Door>();
-            Enemies = new List<GameObject>();
             InitialEnemyCount = 0;
+            remainingEnemies = 0;
             WallColliders = new List<ColliderComponent>();
             InteriorObjects = new List<GameObject>();
             RoomLights = new List<DynamicLight>();
@@ -100,6 +101,7 @@ namespace DarkArmsProto.World
             };
             northWall.AddComponent(northCollider);
             WallColliders.Add(northCollider);
+            WallGameObjects.Add(northWall); // Keep GameObject alive
 
             // South wall
             var southWall = new GameObject(
@@ -112,6 +114,7 @@ namespace DarkArmsProto.World
             };
             southWall.AddComponent(southCollider);
             WallColliders.Add(southCollider);
+            WallGameObjects.Add(southWall); // Keep GameObject alive
 
             // East wall
             var eastWall = new GameObject(
@@ -124,6 +127,7 @@ namespace DarkArmsProto.World
             };
             eastWall.AddComponent(eastCollider);
             WallColliders.Add(eastCollider);
+            WallGameObjects.Add(eastWall); // Keep GameObject alive
 
             // West wall
             var westWall = new GameObject(
@@ -136,6 +140,7 @@ namespace DarkArmsProto.World
             };
             westWall.AddComponent(westCollider);
             WallColliders.Add(westCollider);
+            WallGameObjects.Add(westWall); // Keep GameObject alive
 
             // Floor Collider (Prevents enemies from falling/clipping through floor)
             var floorObj = new GameObject(WorldPosition + new Vector3(0, -0.5f, 0));
@@ -146,6 +151,7 @@ namespace DarkArmsProto.World
             };
             floorObj.AddComponent(floorCollider);
             WallColliders.Add(floorCollider);
+            WallGameObjects.Add(floorObj); // Keep GameObject alive
 
             // Ceiling Collider (Prevents flying enemies from flying too high)
             var ceilingObj = new GameObject(WorldPosition + new Vector3(0, wallHeight + 0.5f, 0));
@@ -156,6 +162,7 @@ namespace DarkArmsProto.World
             };
             ceilingObj.AddComponent(ceilingCollider);
             WallColliders.Add(ceilingCollider);
+            WallGameObjects.Add(ceilingObj); // Keep GameObject alive
         }
 
         public void AddConnection(Direction direction, Room otherRoom)
@@ -197,6 +204,30 @@ namespace DarkArmsProto.World
 
         public List<SpawnerData> LayoutSpawners { get; private set; } = new List<SpawnerData>();
 
+        /// <summary>
+        /// Initialise le compteur d'ennemis de la room (appelé par EnemySpawnSystem)
+        /// </summary>
+        public void InitializeEnemyCount(int count)
+        {
+            InitialEnemyCount = count;
+            remainingEnemies = count;
+        }
+
+        /// <summary>
+        /// Appelé par l'event OnDeath de HealthComponent quand un ennemi meurt
+        /// </summary>
+        public void OnEnemyDeath(GameObject enemy)
+        {
+            remainingEnemies--;
+
+            // Vérifier si la room est cleared
+            if (!IsCleared && remainingEnemies <= 0 && InitialEnemyCount > 0)
+            {
+                IsCleared = true;
+                UnlockDoors();
+            }
+        }
+
         public void ApplyLayout(RoomLayout layout)
         {
             InteriorObjects.Clear();
@@ -229,208 +260,25 @@ namespace DarkArmsProto.World
             LayoutSpawners = layout.Spawners;
         }
 
-        public void SpawnEnemies(
-            EnemyFactory spawner,
-            int count,
-            Action<Vector3, Vector3, float, SoulType> onProjectileSpawn
-        )
-        {
-            InitialEnemyCount = count;
-            Random rng = new Random();
+        // /// <summary>
+        // /// Met à jour l'IA des ennemis de la room (target uniquement)
+        // /// Appelé par RoomManager chaque frame
+        // /// NOTE: WallColliders est assigné au spawn par EnemySpawnSystem, pas ici!
+        // /// </summary>
+        // public void UpdateEnemyAI(GameObject player)
+        // {
+        //     var enemies = GameWorld.Instance.GetAllEnemies();
 
-            if (LayoutSpawners.Count > 0)
-            {
-                InitialEnemyCount = LayoutSpawners.Count;
-                foreach (var s in LayoutSpawners)
-                {
-                    Vector3 pos = WorldPosition + new Vector3(s.X, s.Y, s.Z);
-                    var enemy = spawner.SpawnEnemy(pos, (SoulType)s.Type);
-
-                    var ai = enemy.GetComponent<EnemyAIComponent>();
-                    if (ai != null)
-                    {
-                        ai.OnShoot += onProjectileSpawn;
-                    }
-
-                    Enemies.Add(enemy);
-                }
-                return;
-            }
-
-            for (int i = 0; i < count; i++)
-            {
-                // 1. Choose a spawn surface (Floor or Platform)
-                Vector3 spawnPos = Vector3.Zero;
-                bool validPos = false;
-                int attempts = 0;
-
-                while (!validPos && attempts < 20)
-                {
-                    attempts++;
-
-                    // 50% chance to spawn on a platform if available
-                    if (InteriorObjects.Count > 0 && rng.NextDouble() > 0.5)
-                    {
-                        var platform = InteriorObjects[rng.Next(InteriorObjects.Count)];
-                        var collider = platform.GetComponent<ColliderComponent>();
-                        if (collider != null)
-                        {
-                            // Spawn on top of the platform
-                            var (min, max) = collider.GetBounds();
-                            float x = (float)(rng.NextDouble() * (max.X - min.X) + min.X);
-                            float z = (float)(rng.NextDouble() * (max.Z - min.Z) + min.Z);
-                            spawnPos = new Vector3(x, max.Y, z); // Exact top surface
-                        }
-                        else
-                        {
-                            // Fallback to floor
-                            float range = GameConfig.RoomSize / 2f - 4f;
-                            float offsetX = (float)(rng.NextDouble() * 2 - 1) * range;
-                            float offsetZ = (float)(rng.NextDouble() * 2 - 1) * range;
-                            spawnPos = WorldPosition + new Vector3(offsetX, 0, offsetZ);
-                        }
-                    }
-                    else
-                    {
-                        // Spawn on floor
-                        float range = GameConfig.RoomSize / 2f - 4f;
-                        float offsetX = (float)(rng.NextDouble() * 2 - 1) * range;
-                        float offsetZ = (float)(rng.NextDouble() * 2 - 1) * range;
-                        spawnPos = WorldPosition + new Vector3(offsetX, 0, offsetZ);
-                    }
-
-                    // Check if position is clear of obstacles
-                    // Create a temporary collider check
-                    // spawnPos is the feet position. We check the volume above it.
-                    Vector3 checkHalfSize = new Vector3(0.5f, 1.0f, 0.5f); // Approx enemy half-size
-                    Vector3 checkCenter = spawnPos + new Vector3(0, checkHalfSize.Y, 0);
-
-                    Vector3 checkMin = checkCenter - checkHalfSize;
-                    Vector3 checkMax = checkCenter + checkHalfSize;
-
-                    // Lift slightly to avoid floor collision (floor is at spawnPos.Y and below)
-                    checkMin.Y += 0.2f;
-
-                    bool collision = false;
-                    foreach (var wall in WallColliders)
-                    {
-                        var (wMin, wMax) = wall.GetBounds();
-                        if (CheckAABB(checkMin, checkMax, wMin, wMax))
-                        {
-                            collision = true;
-                            break;
-                        }
-                    }
-
-                    if (!collision)
-                    {
-                        foreach (var obj in InteriorObjects)
-                        {
-                            var objCol = obj.GetComponent<ColliderComponent>();
-                            if (objCol != null)
-                            {
-                                var (oMin, oMax) = objCol.GetBounds();
-                                if (CheckAABB(checkMin, checkMax, oMin, oMax))
-                                {
-                                    collision = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (!collision)
-                    {
-                        validPos = true;
-                    }
-                }
-
-                if (!validPos)
-                    continue; // Skip this enemy if no valid pos found
-
-                // 2. Choisir un type d'ennemi
-                SoulType soulType;
-                if (Type == RoomType.Boss)
-                {
-                    soulType = SoulType.Demon;
-                }
-                else
-                {
-                    double roll = rng.NextDouble();
-                    if (roll < 0.33) // 33% Beast
-                        soulType = SoulType.Beast;
-                    else if (roll < 0.70) // 37% Demon
-                        soulType = SoulType.Demon;
-                    else // 30% Undead
-                        soulType = SoulType.Undead;
-                }
-
-                // 3. Spawner l'ennemi (GameObject)
-                var enemy = spawner.SpawnEnemy(spawnPos, soulType);
-
-                // 4. Subscribe to projectile event
-                var ai = enemy.GetComponent<EnemyAIComponent>();
-                if (ai != null)
-                {
-                    ai.OnShoot += onProjectileSpawn;
-                }
-
-                Enemies.Add(enemy);
-            }
-
-            // Share enemy list for avoidance
-            foreach (var enemy in Enemies)
-            {
-                var ai = enemy.GetComponent<EnemyAIComponent>();
-                if (ai != null)
-                {
-                    ai.RoomEnemies = Enemies;
-                }
-            }
-        }
-
-        private bool CheckAABB(Vector3 minA, Vector3 maxA, Vector3 minB, Vector3 maxB)
-        {
-            return (minA.X <= maxB.X && maxA.X >= minB.X)
-                && (minA.Y <= maxB.Y && maxA.Y >= minB.Y)
-                && (minA.Z <= maxB.Z && maxA.Z >= minB.Z);
-        }
-
-        public void UpdateEnemies(float deltaTime, GameObject player)
-        {
-            // Nettoyage des ennemis morts
-            for (int i = Enemies.Count - 1; i >= 0; i--)
-            {
-                var health = Enemies[i].GetComponent<HealthComponent>();
-                // On vérifie si le composant existe et si l'ennemi est mort
-                if (health != null && health.IsDead)
-                {
-                    Enemies.RemoveAt(i);
-                }
-            }
-
-            // Mise à jour des ennemis vivants
-            foreach (var enemy in Enemies)
-            {
-                // Mise à jour de la cible pour l'IA
-                var ai = enemy.GetComponent<EnemyAIComponent>();
-                if (ai != null)
-                {
-                    ai.SetTarget(player);
-                    ai.WallColliders = WallColliders;
-                }
-
-                // Update générique du GameObject
-                enemy.Update(deltaTime);
-            }
-
-            // Vérification de la fin de salle
-            if (!IsCleared && Enemies.Count == 0 && InitialEnemyCount > 0)
-            {
-                IsCleared = true;
-                UnlockDoors();
-            }
-        }
+        //     foreach (var enemy in enemies)
+        //     {
+        //         var ai = enemy.GetComponent<EnemyAIComponent>();
+        //         if (ai != null)
+        //         {
+        //             ai.SetTarget(player);
+        //             // NE PAS réassigner WallColliders ici! Chaque ennemi garde les colliders de SA room
+        //         }
+        //     }
+        // }
 
         public void LockDoors()
         {
@@ -448,7 +296,7 @@ namespace DarkArmsProto.World
         {
             IsActive = true;
             IsVisited = true;
-            if (!IsCleared && Enemies.Count > 0)
+            if (!IsCleared && remainingEnemies > 0)
                 LockDoors();
         }
 

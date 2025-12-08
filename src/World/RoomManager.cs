@@ -6,6 +6,7 @@ using System.Text.Json;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
 using DarkArmsProto.Factories;
+using DarkArmsProto.Systems;
 using DarkArmsProto.VFX;
 
 namespace DarkArmsProto.World
@@ -17,8 +18,10 @@ namespace DarkArmsProto.World
         private Random random;
         private LightManager? lightManager;
         private List<RoomLayout> roomTemplates = new List<RoomLayout>();
+        private EnemySpawnSystem spawnSystem = new EnemySpawnSystem();
 
         public Room CurrentRoom => currentRoom!;
+        public List<ColliderComponent> AllColliders;
 
         public Dictionary<Vector2, Room> GetAllRooms() => rooms;
 
@@ -26,6 +29,7 @@ namespace DarkArmsProto.World
         {
             rooms = new Dictionary<Vector2, Room>();
             random = new Random();
+            AllColliders = new List<ColliderComponent>();
             LoadTemplates();
         }
 
@@ -73,7 +77,7 @@ namespace DarkArmsProto.World
 
                 // Generate connected rooms - Increased to 20 rooms max
                 GenerateRoomsRecursive(startRoom, 0, 20);
-
+                SetRoomColliders(rooms);
                 // Ensure we have enough rooms (e.g. at least 6)
                 if (rooms.Count >= 6)
                     break;
@@ -230,7 +234,14 @@ namespace DarkArmsProto.World
                 room.Type == RoomType.Boss
                     ? GameConfig.BossRoomEnemyCount
                     : random.Next(GameConfig.MinEnemiesPerRoom, GameConfig.MaxEnemiesPerRoom + 1);
-            room.SpawnEnemies(spawner, enemyCount, onProjectileSpawn);
+
+            // Utiliser le nouveau système de spawn
+            spawnSystem.SpawnEnemiesInRoom(room, spawner, enemyCount, onProjectileSpawn);
+
+            // Initialiser le compteur d'ennemis de la room
+            room.InitializeEnemyCount(
+                room.LayoutSpawners.Count > 0 ? room.LayoutSpawners.Count : enemyCount
+            );
         }
 
         public void Update(float deltaTime, GameObject player)
@@ -238,8 +249,8 @@ namespace DarkArmsProto.World
             if (currentRoom == null)
                 return;
 
-            // Update current room enemies
-            currentRoom.UpdateEnemies(deltaTime, player);
+            // Update enemy AI (target, wall colliders)
+            //currentRoom.UpdateEnemyAI(player);
 
             // Check for room transitions
             CheckRoomTransition(player);
@@ -359,9 +370,12 @@ namespace DarkArmsProto.World
             currentRoom.RenderInterior();
             currentRoom.RenderDoors();
 
+            // Get all enemies from GameWorld
+            var enemies = GameWorld.Instance.GetAllEnemies();
+
             // Sort enemies by distance to camera (Back to Front) for proper transparency
             Vector3 camPos = Game.GameCamera.Position;
-            currentRoom.Enemies.Sort(
+            enemies.Sort(
                 (a, b) =>
                 {
                     float distA = Vector3.DistanceSquared(a.Position, camPos);
@@ -371,7 +385,7 @@ namespace DarkArmsProto.World
             );
 
             // Render current room enemies
-            foreach (var enemy in currentRoom.Enemies)
+            foreach (var enemy in enemies)
             {
                 enemy.Render();
             }
@@ -389,7 +403,7 @@ namespace DarkArmsProto.World
 
         public List<GameObject> GetCurrentRoomEnemies()
         {
-            return currentRoom?.Enemies ?? new List<GameObject>();
+            return GameWorld.Instance.GetAllEnemies();
         }
 
         public void InitializeRooms(
@@ -403,6 +417,17 @@ namespace DarkArmsProto.World
                 {
                     SpawnEnemiesInRoom(room, spawner, onProjectileSpawn);
                 }
+            }
+        }
+
+        private void SetRoomColliders(Dictionary<Vector2, Room> rooms)
+        {
+            AllColliders.Clear();
+
+            foreach (var room in rooms.Values)
+            {
+                // AllColliders.AddRange(room.WallColliders);
+                GameWorld.Instance.RegisterMultipleColliders(room.WallGameObjects, "Wall");
             }
         }
     }

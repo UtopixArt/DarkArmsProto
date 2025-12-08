@@ -84,6 +84,15 @@ namespace DarkArmsProto.Components
 
         private void ApplyGravity(float deltaTime)
         {
+            // Ne pas appliquer la gravité si les WallColliders ne sont pas encore assignés
+            if (WallColliders == null || WallColliders.Count == 0)
+            {
+                Console.WriteLine(
+                    $"[EnemyAI] WARNING: Enemy at {Owner.Position} has no WallColliders!"
+                );
+                return;
+            }
+
             float gravity = 30f;
             Vector3 newPos = Owner.Position;
             newPos.Y -= gravity * deltaTime;
@@ -106,10 +115,11 @@ namespace DarkArmsProto.Components
                     rayOrigin.Y = min.Y + 0.5f; // Start 0.5f above bottom
 
                     Vector3 rayDir = -Vector3.UnitY;
-                    float rayLength = 1.0f; // Look down 1 unit (0.5 inside + 0.5 below)
+                    float rayLength = 5.0f; // Look down far enough to reach floor
 
                     float bestFloorY = float.MinValue;
                     bool hitFloor = false;
+                    int hitCount = 0;
 
                     foreach (var wall in WallColliders)
                     {
@@ -124,6 +134,7 @@ namespace DarkArmsProto.Components
                             )
                         )
                         {
+                            hitCount++;
                             // Check if it's a floor (normal pointing up)
                             if (Vector3.Dot(normal, Vector3.UnitY) > 0.5f)
                             {

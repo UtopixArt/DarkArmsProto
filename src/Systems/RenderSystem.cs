@@ -18,7 +18,7 @@ namespace DarkArmsProto.Systems
         private LightManager lightManager;
         private ParticleManager particleManager;
         private SoulManager soulManager;
-        private ProjectileSystem projectileSystem;
+        private ProjectileManager projectileSystem;
         private GameUI gameUI;
         private MapEditor mapEditor;
         private CombatSystem combatSystem;
@@ -37,7 +37,7 @@ namespace DarkArmsProto.Systems
             LightManager lightManager,
             ParticleManager particleManager,
             SoulManager soulManager,
-            ProjectileSystem projectileSystem,
+            ProjectileManager projectileSystem,
             GameUI gameUI,
             MapEditor mapEditor,
             CombatSystem combatSystem

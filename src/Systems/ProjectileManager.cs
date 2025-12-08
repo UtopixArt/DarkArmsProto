@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Numerics;
 using DarkArmsProto.Components;
 using DarkArmsProto.Components.Behaviors;
 using DarkArmsProto.Core;
@@ -9,36 +10,49 @@ namespace DarkArmsProto.Systems
     /// System for managing all projectiles in the game.
     /// Replaces manual projectile list management with automatic tracking via GameWorld.
     /// </summary>
-    public class ProjectileSystem
+    public class ProjectileManager : GameObject
     {
         private List<ColliderComponent> currentWalls = new();
+        private List<GameObject> currentEnemies = new();
+        private List<GameObject> currentPlayerProjectiles = new();
+        private List<GameObject> currentEnemyProjectiles = new();
+
+        public ProjectileManager(Vector3 position, string tag = "Untagged")
+            : base(position, tag) { }
+
+        public void Start() { }
 
         /// <summary>
         /// Update all projectiles (they update themselves, we just provide dependencies)
         /// </summary>
-        public void Update(float deltaTime)
+        public override void Update(float deltaTime)
         {
-            // Get all projectiles from GameWorld
-            var playerProjectiles = GameWorld.Instance.FindAllWithTag("Projectile");
-            var enemyProjectiles = GameWorld.Instance.FindAllWithTag("EnemyProjectile");
+            Console.WriteLine("Updating projectiles");
+            UpdateProjectileList(currentPlayerProjectiles, deltaTime);
+            UpdateProjectileList(currentEnemyProjectiles, deltaTime);
 
-            // Update player projectiles
-            UpdateProjectileList(playerProjectiles, deltaTime);
-
-            // Update enemy projectiles
-            UpdateProjectileList(enemyProjectiles, deltaTime);
+            // Call base to update any components attached to ProjectileManager
+            base.Update(deltaTime);
         }
+
+        //UpdateProjectileList(playerProjectiles, deltaTime);
+
+        // Update enemy projectiles
+        //UpdateProjectileList(enemyProjectiles, deltaTime);
 
         private void UpdateProjectileList(List<GameObject> projectiles, float deltaTime)
         {
-            var enemies = GameWorld.Instance.FindAllWithTag("Enemy");
+            var enemies = GameWorld.Instance.GetAllEnemies();
 
             for (int i = projectiles.Count - 1; i >= 0; i--)
             {
                 var proj = projectiles[i];
+
+                // Skip inactive projectiles
                 if (!proj.IsActive)
                 {
-                    GameWorld.Instance.Unregister(proj);
+                    // Remove from our tracking list
+                    projectiles.RemoveAt(i);
                     continue;
                 }
 
@@ -46,10 +60,7 @@ namespace DarkArmsProto.Systems
                 if (projComp == null)
                     continue;
 
-                // Update dependencies (walls are provided by Room)
-                projComp.WallColliders = currentWalls;
-
-                // Update homing behavior if present
+                // Update homing behavior dependencies (called BEFORE GameWorld.Update)
                 foreach (var behavior in projComp.GetBehaviors())
                 {
                     if (behavior is HomingBehavior homing)
@@ -58,34 +69,28 @@ namespace DarkArmsProto.Systems
                     }
                 }
 
-                // Update the projectile
-                proj.Update(deltaTime);
-
-                // Clean up if inactive
-                if (!proj.IsActive)
-                {
-                    GameWorld.Instance.Unregister(proj);
-                }
+                // DON'T call proj.Update() here - GameWorld handles that automatically
+                // We only update dependencies like enemy lists for homing behavior
             }
         }
 
         /// <summary>
         /// Render all projectiles
         /// </summary>
-        public void Render()
+        public override void Render()
         {
-            var playerProjectiles = GameWorld.Instance.FindAllWithTag("Projectile");
-            var enemyProjectiles = GameWorld.Instance.FindAllWithTag("EnemyProjectile");
-
-            foreach (var proj in playerProjectiles)
+            foreach (var proj in currentPlayerProjectiles)
             {
                 proj.Render();
             }
 
-            foreach (var proj in enemyProjectiles)
+            foreach (var proj in currentEnemyProjectiles)
             {
                 proj.Render();
             }
+
+            // Call base to render any components attached to ProjectileManager
+            base.Render();
         }
 
         /// <summary>
@@ -102,7 +107,17 @@ namespace DarkArmsProto.Systems
         public void SpawnProjectile(GameObject projectile, bool isEnemyProjectile = false)
         {
             string tag = isEnemyProjectile ? "EnemyProjectile" : "Projectile";
-            GameWorld.Instance.Register(projectile, tag);
+            var obj = GameWorld.Instance.Register(projectile, tag);
+            obj.GetComponent<ProjectileComponent>().WallColliders = currentWalls;
+
+            if (isEnemyProjectile)
+            {
+                currentEnemyProjectiles.Add(obj);
+            }
+            else
+            {
+                currentPlayerProjectiles.Add(obj);
+            }
         }
 
         /// <summary>
@@ -114,15 +129,6 @@ namespace DarkArmsProto.Systems
             {
                 SpawnProjectile(proj, isEnemyProjectile);
             }
-        }
-
-        /// <summary>
-        /// Get count of active projectiles (for debugging/UI)
-        /// </summary>
-        public int GetProjectileCount()
-        {
-            return GameWorld.Instance.FindAllWithTag("Projectile").Count
-                + GameWorld.Instance.FindAllWithTag("EnemyProjectile").Count;
         }
     }
 }

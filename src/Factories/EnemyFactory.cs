@@ -46,8 +46,8 @@ namespace DarkArmsProto.Factories
 
             var enemy = builder.Build();
 
-            // Register enemy to GameWorld automatically
-            GameWorld.Instance.Register(enemy, "Enemy");
+            // NOTE: L'enregistrement dans GameWorld est maintenant géré par EnemySpawnSystem
+            // pour avoir un meilleur contrôle sur l'initialisation (éviter que les ennemis tombent)
 
             return enemy;
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Numerics;
 using DarkArmsProto.Audio;
 using DarkArmsProto.Builders;
@@ -25,8 +26,7 @@ namespace DarkArmsProto
         // Refactored systems
         private CombatSystem combatSystem = null!;
         private CollisionSystem collisionSystem = null!;
-        private ProjectileSystem projectileSystem = null!;
-        private InputSystem inputSystem = null!;
+        private ProjectileManager projectileManager = null!;
         private RenderSystem renderSystem = null!;
         private GameUI gameUI = null!;
         private MapEditor mapEditor = null!;
@@ -81,7 +81,10 @@ namespace DarkArmsProto
             // Initialize new systems
             combatSystem = new CombatSystem(player, roomManager);
             collisionSystem = new CollisionSystem();
-            projectileSystem = new ProjectileSystem();
+
+            projectileManager = new ProjectileManager(Vector3.Zero, "ProjectileManager");
+            GameWorld.Instance.Register(projectileManager, "ProjectileManager");
+            projectileManager.SetWalls(roomManager.AllColliders);
 
             gameUI = new GameUI(player, roomManager);
             mapEditor = new MapEditor();
@@ -90,15 +93,22 @@ namespace DarkArmsProto
 
             roomManager.SetLightManager(lightManager);
 
+            // Inject shooting dependencies into PlayerInputComponent
+            var playerInput = player.GetComponent<PlayerInputComponent>();
+            if (playerInput != null)
+            {
+                playerInput.ProjectileManager = projectileManager;
+                playerInput.ExplosionCallback = combatSystem.TriggerExplosion;
+            }
+
             // Initialize new refactored systems
-            inputSystem = new InputSystem(player, projectileSystem, combatSystem.TriggerExplosion);
             renderSystem = new RenderSystem(
                 player,
                 roomManager,
                 lightManager,
                 particleManager,
                 soulManager,
-                projectileSystem,
+                projectileManager,
                 gameUI,
                 mapEditor,
                 combatSystem
@@ -139,24 +149,9 @@ namespace DarkArmsProto
                 return; // Skip game update
             }
 
-            // Update player
-            player.Update(deltaTime);
-
-            // Update global camera reference
-            var camComp = player.GetComponent<CameraComponent>();
-            if (camComp != null)
-            {
-                GameCamera = camComp.Camera;
-            }
-
-            // Update walls for projectiles
-            projectileSystem.SetWalls(roomManager.CurrentRoom.WallColliders);
-
-            // Handle player input (shooting, etc.)
-            inputSystem.HandleInput(deltaTime);
-
-            // Update projectiles
-            projectileSystem.Update(deltaTime);
+            // GameWorld met à jour TOUS les GameObjects (player, enemies, etc.)
+            // PlayerInputComponent handles both movement and shooting in its Update()
+            GameWorld.Instance.Update(deltaTime);
 
             // Process collisions (automatic via CollisionSystem)
             collisionSystem.Update(deltaTime);
@@ -164,7 +159,7 @@ namespace DarkArmsProto
             // Update damage numbers (static manager)
             Systems.DamageNumberManager.Update(deltaTime);
 
-            // Update room manager (handles enemies and transitions)
+            // Update room manager (gère l'IA des ennemis et les transitions)
             roomManager.Update(deltaTime, player);
 
             // Update souls and particles
@@ -200,7 +195,7 @@ namespace DarkArmsProto
             }
 
             // Register to GameWorld as enemy projectile
-            projectileSystem.SpawnProjectile(projectile, true);
+            projectileManager.SpawnProjectile(projectile, true);
 
             // Sound
             AudioManager.Instance.PlaySound(SoundType.Shoot, 0.2f);

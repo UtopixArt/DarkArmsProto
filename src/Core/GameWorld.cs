@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using DarkArmsProto.Components;
 
 namespace DarkArmsProto.Core
 {
@@ -22,7 +23,7 @@ namespace DarkArmsProto.Core
         /// <summary>
         /// Register a GameObject to the world
         /// </summary>
-        public void Register(GameObject obj, string tag = "Untagged")
+        public GameObject Register(GameObject obj, string tag = "Untagged")
         {
             if (!allObjects.Contains(obj))
             {
@@ -40,6 +41,7 @@ namespace DarkArmsProto.Core
                     playerObject = obj;
                 }
             }
+            return obj;
         }
 
         /// <summary>
@@ -155,6 +157,33 @@ namespace DarkArmsProto.Core
             else if (oldTag == "Player" && obj == playerObject)
             {
                 playerObject = null;
+            }
+        }
+
+        public void Update(float deltaTime)
+        {
+            // Liste temporaire pour différer les suppressions
+            var objectsToUpdate = new List<GameObject>(allObjects);
+
+            foreach (var obj in objectsToUpdate)
+            {
+                obj.Update(deltaTime);
+            }
+        }
+
+        /// <summary>
+        /// Get all enemies (objects with "Enemy" tag)
+        /// </summary>
+        public List<GameObject> GetAllEnemies()
+        {
+            return FindAllWithTag("Enemy");
+        }
+
+        internal void RegisterMultipleColliders(List<GameObject> gameObjects, string tag)
+        {
+            foreach (var obj in gameObjects)
+            {
+                Register(obj, tag);
             }
         }
     }

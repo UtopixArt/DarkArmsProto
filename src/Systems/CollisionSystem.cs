@@ -81,18 +81,31 @@ namespace DarkArmsProto.Systems
 
             foreach (var proj in allProjectiles)
             {
-                var projComp = proj.GetComponent<ProjectileComponent>();
-                if (projComp == null)
+                if (!proj.IsActive)
                     continue;
 
-                // Check against walls
+                var projCollider = proj.GetComponent<ColliderComponent>();
+                if (projCollider == null)
+                    continue;
+
+                // Check against walls using consistent collision detection
                 foreach (var wall in walls)
                 {
+                    if (!wall.IsActive)
+                        continue;
+
                     var wallCollider = wall.GetComponent<ColliderComponent>();
-                    if (wallCollider != null && wallCollider.CheckPointCollision(proj.Position))
+                    if (wallCollider == null)
+                        continue;
+
+                    // Use proper collision check instead of point collision
+                    bool isColliding = projCollider.CheckCollision(wallCollider);
+
+                    if (isColliding)
                     {
-                        projComp.OnWallHit(proj.Position);
-                        break;
+                        // Use NotifyCollision for consistency with other collision types
+                        NotifyCollision(proj, wall);
+                        break; // Stop checking after first wall hit
                     }
                 }
             }

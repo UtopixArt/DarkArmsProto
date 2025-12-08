@@ -303,19 +303,23 @@ namespace DarkArmsProto.Systems
 
         private void HandleInspectorInput()
         {
-            if (currentRoom == null || currentRoom.Enemies.Count == 0)
+            if (currentRoom == null)
+                return;
+
+            var enemies = GameWorld.Instance.GetAllEnemies();
+            if (enemies.Count == 0)
                 return;
 
             // Cycle selection
             if (Raylib.IsKeyPressed(KeyboardKey.Tab))
             {
-                int index = selectedEnemy != null ? currentRoom.Enemies.IndexOf(selectedEnemy) : -1;
-                index = (index + 1) % currentRoom.Enemies.Count;
-                selectedEnemy = currentRoom.Enemies[index];
+                int index = selectedEnemy != null ? enemies.IndexOf(selectedEnemy) : -1;
+                index = (index + 1) % enemies.Count;
+                selectedEnemy = enemies[index];
             }
 
             if (selectedEnemy == null)
-                selectedEnemy = currentRoom.Enemies[0];
+                selectedEnemy = enemies[0];
 
             // Change Mode
             if (Raylib.IsKeyPressed(KeyboardKey.One))

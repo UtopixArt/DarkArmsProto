@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using DarkArmsProto.Audio;
 using DarkArmsProto.Core;
+using DarkArmsProto.Systems;
+using DarkArmsProto.VFX;
 using Raylib_cs;
 
 namespace DarkArmsProto.Components
@@ -19,6 +22,10 @@ namespace DarkArmsProto.Components
 
         public List<ColliderComponent>? WallColliders { get; set; }
 
+        // Shooting dependencies (injected)
+        public ProjectileManager? ProjectileManager { get; set; }
+        public Action<Vector3, float, float>? ExplosionCallback { get; set; }
+
         private float yaw;
         private float pitch;
 
@@ -26,10 +33,26 @@ namespace DarkArmsProto.Components
         private float footOffset = 0.8f; // Start higher to avoid starting inside floor
         private float slopeMaxCos = 0.5f; // cos(60°)
 
+        private InputSystem? inputSystem;
+
+        private Vector2 movementInput = Vector2.Zero;
+
+        public override void Start()
+        {
+            inputSystem = new InputSystem();
+            inputSystem?.ForwardEvent += OnForward;
+            inputSystem?.RightEvent += OnRight;
+        }
+
         public override void Update(float deltaTime)
         {
             // Update mouse look first to get latest rotation
             HandleMouseLook();
+
+            inputSystem?.Update();
+
+            // Handle shooting
+            HandleShooting();
 
             // Move player based on current rotation
             HandleMovement(deltaTime);
@@ -41,6 +64,16 @@ namespace DarkArmsProto.Components
                 cameraComp.Camera.Position = Owner.Position + cameraComp.Offset;
                 cameraComp.UpdateRotation(yaw, pitch);
             }
+        }
+
+        private void OnForward(Vector2 dir)
+        {
+            movementInput.Y = dir.Y;
+        }
+
+        private void OnRight(Vector2 dir)
+        {
+            movementInput.X = dir.X;
         }
 
         private void HandleMouseLook()
@@ -58,15 +91,10 @@ namespace DarkArmsProto.Components
             // Input direction
             Vector3 forward = Vector3.Normalize(new Vector3(MathF.Sin(yaw), 0, MathF.Cos(yaw)));
             Vector3 right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
+
             Vector3 moveDir = Vector3.Zero;
-            if (Raylib.IsKeyDown(KeyboardKey.W))
-                moveDir += forward;
-            if (Raylib.IsKeyDown(KeyboardKey.S))
-                moveDir -= forward;
-            if (Raylib.IsKeyDown(KeyboardKey.A))
-                moveDir -= right;
-            if (Raylib.IsKeyDown(KeyboardKey.D))
-                moveDir += right;
+            moveDir += forward * movementInput.Y;
+            moveDir += right * movementInput.X;
             if (moveDir != Vector3.Zero)
                 moveDir = Vector3.Normalize(moveDir);
 
@@ -198,6 +226,65 @@ namespace DarkArmsProto.Components
                     MathF.Cos(pitch) * MathF.Cos(yaw)
                 )
             );
+        }
+
+        private void HandleShooting()
+        {
+            if (!Raylib.IsMouseButtonDown(MouseButton.Left))
+                return;
+
+            if (ProjectileManager == null)
+                return;
+
+            var cameraComp = Owner.GetComponent<CameraComponent>();
+            var weaponComp = Owner.GetComponent<WeaponComponent>();
+
+            if (cameraComp == null || weaponComp == null)
+                return;
+
+            var newProjectiles = weaponComp.TryShoot(cameraComp.Camera, ExplosionCallback);
+
+            if (newProjectiles.Count == 0)
+                return;
+
+            // Register projectiles to GameWorld
+            ProjectileManager.SpawnProjectiles(newProjectiles, false);
+
+            // Shoot feedback
+            AudioManager.Instance.PlaySound(SoundType.Shoot, 0.3f);
+
+            // Screen shake
+            var screenShake = Owner.GetComponent<ScreenShakeComponent>();
+            if (screenShake != null)
+            {
+                screenShake.AddTrauma(GameConfig.ScreenShakeOnShoot);
+            }
+
+            // Muzzle flash VFX
+            SpawnMuzzleFlash(newProjectiles[0], cameraComp);
+        }
+
+        private void SpawnMuzzleFlash(GameObject firstProjectile, CameraComponent cameraComp)
+        {
+            var projMesh = firstProjectile.GetComponent<MeshRendererComponent>();
+            Color muzzleColor = projMesh != null ? projMesh.Color : Color.Yellow;
+
+            Vector3 muzzlePos;
+            var weaponRender = Owner.GetComponent<WeaponRenderComponent>();
+
+            if (weaponRender != null)
+            {
+                muzzlePos = weaponRender.GetMuzzlePosition();
+            }
+            else
+            {
+                muzzlePos =
+                    cameraComp.Camera.Position
+                    + Vector3.Normalize(cameraComp.Camera.Target - cameraComp.Camera.Position)
+                        * 0.5f;
+            }
+
+            VFXHelper.SpawnMuzzleFlash(muzzlePos, muzzleColor);
         }
     }
 }
