@@ -11,7 +11,7 @@ namespace DarkArmsProto
 
         // Player collider settings
         public const float PlayerColliderWidth = 0.4f;
-        public const float PlayerColliderHeight = 1.6f;
+        public const float PlayerColliderHeight = 0.1f;
         public const float PlayerColliderDepth = 0.4f;
 
         // === SCREEN EFFECTS ===

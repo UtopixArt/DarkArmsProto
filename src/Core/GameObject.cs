@@ -61,7 +61,7 @@ namespace DarkArmsProto.Core
             return tag == checkTag;
         }
 
-        public virtual void Update(float deltaTime)
+        public void Update(float deltaTime)
         {
             if (!IsActive)
                 return;
@@ -69,7 +69,7 @@ namespace DarkArmsProto.Core
                 c.Update(deltaTime);
         }
 
-        public virtual void Render()
+        public void Render()
         {
             if (!IsActive)
                 return;

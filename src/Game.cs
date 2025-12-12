@@ -82,8 +82,7 @@ namespace DarkArmsProto
             combatSystem = new CombatSystem(player, roomManager);
             collisionSystem = new CollisionSystem();
 
-            projectileManager = new ProjectileManager(Vector3.Zero, "ProjectileManager");
-            GameWorld.Instance.Register(projectileManager, "ProjectileManager");
+            projectileManager = new ProjectileManager();
             projectileManager.SetWalls(roomManager.AllColliders);
 
             gameUI = new GameUI(player, roomManager);
@@ -142,6 +141,12 @@ namespace DarkArmsProto
                 renderSystem.ShowColliderDebug = !renderSystem.ShowColliderDebug;
             }
 
+            // Toggle NavMesh debug with F4 (Always available)
+            if (Raylib.IsKeyPressed(KeyboardKey.F4))
+            {
+                renderSystem.ShowNavMesh = !renderSystem.ShowNavMesh;
+            }
+
             if (mapEditor.IsActive)
             {
                 mapEditor.Update(deltaTime);
@@ -152,6 +157,9 @@ namespace DarkArmsProto
             // GameWorld met à jour TOUS les GameObjects (player, enemies, etc.)
             // PlayerInputComponent handles both movement and shooting in its Update()
             GameWorld.Instance.Update(deltaTime);
+
+            // Update Projectile System
+            projectileManager.Update(deltaTime);
 
             // Process collisions (automatic via CollisionSystem)
             collisionSystem.Update(deltaTime);

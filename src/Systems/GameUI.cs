@@ -21,7 +21,7 @@ namespace DarkArmsProto.Systems
         /// <summary>
         /// Render all 2D UI elements
         /// </summary>
-        public void RenderUI(int kills, bool showColliderDebug)
+        public void RenderUI(int kills, bool showColliderDebug, bool showNavMesh = false)
         {
             var healthComp = player.GetComponent<HealthComponent>();
             float currentHealth = healthComp != null ? healthComp.CurrentHealth : 0;
@@ -49,8 +49,8 @@ namespace DarkArmsProto.Systems
             // Crosshair
             RenderCrosshair();
 
-            // Debug indicator
-            RenderDebugIndicator(showColliderDebug);
+            // Debug indicators
+            RenderDebugIndicator(showColliderDebug, showNavMesh);
         }
 
         /// <summary>
@@ -95,27 +95,28 @@ namespace DarkArmsProto.Systems
             Raylib.DrawLine(centerX, centerY - 10, centerX, centerY + 10, Color.White);
         }
 
-        private void RenderDebugIndicator(bool showColliderDebug)
+        private void RenderDebugIndicator(bool showColliderDebug, bool showNavMesh)
         {
+            int rightX = Raylib.GetScreenWidth() - 180;
+
+            // Collider debug
             if (showColliderDebug)
             {
-                Raylib.DrawText(
-                    "[F3] Colliders: ON",
-                    Raylib.GetScreenWidth() - 170,
-                    10,
-                    16,
-                    Color.Green
-                );
+                Raylib.DrawText("[F3] Colliders: ON", rightX, 10, 16, Color.Green);
             }
             else
             {
-                Raylib.DrawText(
-                    "[F3] Colliders: OFF",
-                    Raylib.GetScreenWidth() - 170,
-                    10,
-                    16,
-                    Color.Gray
-                );
+                Raylib.DrawText("[F3] Colliders: OFF", rightX, 10, 16, Color.Gray);
+            }
+
+            // NavMesh debug
+            if (showNavMesh)
+            {
+                Raylib.DrawText("[F4] NavMesh: ON", rightX, 30, 16, Color.Green);
+            }
+            else
+            {
+                Raylib.DrawText("[F4] NavMesh: OFF", rightX, 30, 16, Color.Gray);
             }
         }
 

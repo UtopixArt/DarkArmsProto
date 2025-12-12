@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using DarkArmsProto.Components;
 using DarkArmsProto.Core;
+using DarkArmsProto.Navigation;
 using DarkArmsProto.VFX;
 using Raylib_cs;
 
@@ -49,6 +50,9 @@ namespace DarkArmsProto.World
         public List<GameObject> InteriorObjects { get; private set; }
         public List<DynamicLight> RoomLights { get; private set; }
 
+        // Navigation mesh for AI
+        public NavMesh? NavMesh { get; private set; }
+
         private const float RoomWorldSize = 80f;
 
         public Room(Vector2 gridPosition, RoomType type)
@@ -82,6 +86,24 @@ namespace DarkArmsProto.World
 
             CreateWallColliders();
             GenerateInterior();
+            BuildNavMesh(); // Build AFTER interior is generated
+        }
+
+        /// <summary>
+        /// Build the navigation mesh for this room
+        /// </summary>
+        private void BuildNavMesh()
+        {
+            // Create navmesh with 1.5 unit cells
+            float navMeshSize = GameConfig.RoomSize * 0.9f; // Slightly smaller than room
+            Vector3 navMeshOrigin = WorldPosition - new Vector3(navMeshSize / 2f, 0, navMeshSize / 2f);
+
+            NavMesh = new NavMesh(navMeshOrigin, navMeshSize, navMeshSize, cellSize: 1.5f);
+            NavMesh.Build(WallColliders);
+
+            Console.WriteLine(
+                $"[Room] NavMesh built at {GridPosition} - Size: {NavMesh.Width}x{NavMesh.Height}"
+            );
         }
 
         private void CreateWallColliders()
@@ -153,16 +175,7 @@ namespace DarkArmsProto.World
             WallColliders.Add(floorCollider);
             WallGameObjects.Add(floorObj); // Keep GameObject alive
 
-            // Ceiling Collider (Prevents flying enemies from flying too high)
-            var ceilingObj = new GameObject(WorldPosition + new Vector3(0, wallHeight + 0.5f, 0));
-            var ceilingCollider = new ColliderComponent
-            {
-                Size = new Vector3(halfSize, 0.5f, halfSize),
-                ShowDebug = false,
-            };
-            ceilingObj.AddComponent(ceilingCollider);
-            WallColliders.Add(ceilingCollider);
-            WallGameObjects.Add(ceilingObj); // Keep GameObject alive
+            // Ceiling Collider removed - enemies can now fly freely upward
         }
 
         public void AddConnection(Direction direction, Room otherRoom)
@@ -258,6 +271,9 @@ namespace DarkArmsProto.World
             }
 
             LayoutSpawners = layout.Spawners;
+
+            // Rebuild NavMesh after applying layout
+            BuildNavMesh();
         }
 
         // /// <summary>
@@ -445,16 +461,7 @@ namespace DarkArmsProto.World
                 floorColor
             );
 
-            // Ceiling (Roof)
-            // Draw a plane at WallHeight, but we need to rotate it to face down or just draw a cube
-            // Drawing a thin cube for the ceiling is easier
-            Raylib_cs.Raylib.DrawCube(
-                WorldPosition + new Vector3(0, GameConfig.WallHeight, 0),
-                GameConfig.RoomSize,
-                0.1f,
-                GameConfig.RoomSize,
-                new Raylib_cs.Color(20, 20, 20, 255) // Dark ceiling
-            );
+            // Ceiling removed - open sky effect
         }
 
         private void GenerateInterior()
@@ -492,6 +499,7 @@ namespace DarkArmsProto.World
             block.AddComponent(collider);
             InteriorObjects.Add(block);
             WallColliders.Add(collider);
+            WallGameObjects.Add(block); // Keep GameObject alive and register as Wall
         }
 
         private void GenerateRandomBlocks(Random rng)

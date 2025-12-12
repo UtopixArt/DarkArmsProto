@@ -10,29 +10,20 @@ namespace DarkArmsProto.Systems
     /// System for managing all projectiles in the game.
     /// Replaces manual projectile list management with automatic tracking via GameWorld.
     /// </summary>
-    public class ProjectileManager : GameObject
+    public class ProjectileManager
     {
         private List<ColliderComponent> currentWalls = new();
         private List<GameObject> currentEnemies = new();
         private List<GameObject> currentPlayerProjectiles = new();
         private List<GameObject> currentEnemyProjectiles = new();
 
-        public ProjectileManager(Vector3 position, string tag = "Untagged")
-            : base(position, tag) { }
-
-        public void Start() { }
-
         /// <summary>
         /// Update all projectiles (they update themselves, we just provide dependencies)
         /// </summary>
-        public override void Update(float deltaTime)
+        public void Update(float deltaTime)
         {
-            Console.WriteLine("Updating projectiles");
             UpdateProjectileList(currentPlayerProjectiles, deltaTime);
             UpdateProjectileList(currentEnemyProjectiles, deltaTime);
-
-            // Call base to update any components attached to ProjectileManager
-            base.Update(deltaTime);
         }
 
         //UpdateProjectileList(playerProjectiles, deltaTime);
@@ -77,7 +68,7 @@ namespace DarkArmsProto.Systems
         /// <summary>
         /// Render all projectiles
         /// </summary>
-        public override void Render()
+        public void Render()
         {
             foreach (var proj in currentPlayerProjectiles)
             {
@@ -88,9 +79,6 @@ namespace DarkArmsProto.Systems
             {
                 proj.Render();
             }
-
-            // Call base to render any components attached to ProjectileManager
-            base.Render();
         }
 
         /// <summary>

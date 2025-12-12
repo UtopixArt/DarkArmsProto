@@ -30,6 +30,7 @@ namespace DarkArmsProto.Builders
         private Vector3 colliderSize = new Vector3(0.75f, 2.25f, 0.75f);
         private Vector3 colliderOffset = Vector3.Zero;
         private Action<Vector3, Vector3, float, SoulType>? onShootCallback = null;
+        private List<ColliderComponent>? wallColliders = null;
 
         public EnemyBuilder() { }
 
@@ -140,22 +141,27 @@ namespace DarkArmsProto.Builders
             return this;
         }
 
+        public EnemyBuilder WithWallColliders(List<ColliderComponent> colliders)
+        {
+            this.wallColliders = colliders;
+            return this;
+        }
+
         // === BUILD ===
 
         public GameObject Build()
         {
-            // Adjust spawn position for sprite
+            // Use spawn position as-is for ground enemies (rigidbody will handle ground snapping)
+            // Only adjust Y for flying enemies to make them hover slightly above ground
             Vector3 spawnPos = position;
-            if (!string.IsNullOrEmpty(spritePath))
-            {
-                spawnPos.Y += spriteSize / 2.0f;
-            }
             if (isFlying)
             {
-                spawnPos.Y += 1.5f;
+                spawnPos.Y += 0.5f; // Flying enemies hover just above ground level
             }
 
             var enemy = new GameObject(spawnPos);
+
+
 
             // Health
             enemy.AddComponent(new HealthComponent(health));
@@ -204,6 +210,17 @@ namespace DarkArmsProto.Builders
             enemy.AddComponent(
                 new ColliderComponent { Size = colliderSize, Offset = colliderOffset }
             );
+
+            // Rigidbody (physics) - must be added before AI component
+            var rigidbody = new RigidbodyComponent();
+            rigidbody.UseGravity = !isFlying; // Flying enemies don't use gravity
+            rigidbody.WallColliders = wallColliders; // Assign wall colliders before adding component
+            rigidbody.GroundRayLength = 10.0f; // Long enough to detect ground below
+            rigidbody.UseColliderBottomForRaycast = true; // Start ray from feet
+            rigidbody.ShowDebugRaycast = false; // Disable debug visualization
+            rigidbody.UseKillZone = true; // Auto-kill enemies that fall too far
+            rigidbody.KillZoneY = -50f; // Kill enemies below Y = -50
+            enemy.AddComponent(rigidbody);
 
             // Death handler (manages soul spawning and VFX on death)
             enemy.AddComponent(new EnemyDeathComponent(soulType));

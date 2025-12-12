@@ -14,7 +14,11 @@ namespace DarkArmsProto.Factories
             EnemyDatabase.Load();
         }
 
-        public GameObject SpawnEnemy(Vector3 position, SoulType type)
+        public GameObject SpawnEnemy(
+            Vector3 position,
+            SoulType type,
+            List<ColliderComponent>? wallColliders = null
+        )
         {
             // Get enemy data from database
             var enemyData = EnemyDatabase.Get(type);
@@ -37,6 +41,11 @@ namespace DarkArmsProto.Factories
                 .WithSprite(enemyData.SpritePath, enemyData.SpriteSize, enemyData.GetSpriteOffset())
                 .WithColliderSize(enemyData.GetColliderSize())
                 .WithColliderOffset(enemyData.GetColliderOffset());
+
+            if (wallColliders != null)
+            {
+                builder.WithWallColliders(wallColliders);
+            }
 
             if (enemyData.IsFlying)
                 builder.AsFlying();

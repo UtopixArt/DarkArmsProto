@@ -13,14 +13,9 @@ namespace DarkArmsProto.Components
     {
         public float MoveSpeed { get; set; } = 10f;
         public float MouseSensitivity { get; set; } = 0.003f;
-        public float Gravity { get; set; } = 30f;
         public float JumpForce { get; set; } = 12f;
-        public float VerticalVelocity { get; set; } = 0f;
-        public bool IsGrounded { get; private set; } = false;
 
         public Vector3 RoomCenter { get; set; }
-
-        public List<ColliderComponent>? WallColliders { get; set; }
 
         // Shooting dependencies (injected)
         public ProjectileManager? ProjectileManager { get; set; }
@@ -29,11 +24,8 @@ namespace DarkArmsProto.Components
         private float yaw;
         private float pitch;
 
-        private float footRayLength = 1.5f;
-        private float footOffset = 0.8f; // Start higher to avoid starting inside floor
-        private float slopeMaxCos = 0.5f; // cos(60°)
-
         private InputSystem? inputSystem;
+        private RigidbodyComponent? rigidbody;
 
         private Vector2 movementInput = Vector2.Zero;
 
@@ -42,6 +34,9 @@ namespace DarkArmsProto.Components
             inputSystem = new InputSystem();
             inputSystem?.ForwardEvent += OnForward;
             inputSystem?.RightEvent += OnRight;
+
+            // Get or create rigidbody component
+            rigidbody = Owner.GetComponent<RigidbodyComponent>();
         }
 
         public override void Update(float deltaTime)
@@ -86,7 +81,8 @@ namespace DarkArmsProto.Components
 
         private void HandleMovement(float deltaTime)
         {
-            var playerCollider = Owner.GetComponent<ColliderComponent>();
+            if (rigidbody == null)
+                return;
 
             // Input direction
             Vector3 forward = Vector3.Normalize(new Vector3(MathF.Sin(yaw), 0, MathF.Cos(yaw)));
@@ -99,122 +95,16 @@ namespace DarkArmsProto.Components
                 moveDir = Vector3.Normalize(moveDir);
 
             // Jump
-            if (IsGrounded && Raylib.IsKeyPressed(KeyboardKey.Space))
+            if (rigidbody.IsGrounded && Raylib.IsKeyPressed(KeyboardKey.Space))
             {
-                VerticalVelocity = JumpForce;
-                IsGrounded = false;
+                rigidbody.SetVerticalVelocity(JumpForce);
             }
 
-            // Gravity
-            VerticalVelocity -= Gravity * deltaTime;
-            IsGrounded = false;
-
-            // Ground check via raycast
-            if (playerCollider != null && WallColliders != null)
-            {
-                Vector3 rayOrigin = Owner.Position + new Vector3(0, footOffset, 0);
-                Vector3 rayDir = -Vector3.UnitY;
-                float bestY = float.MinValue;
-
-                foreach (var wall in WallColliders)
-                {
-                    if (wall == null)
-                        continue;
-                    if (
-                        wall.Raycast(
-                            rayOrigin,
-                            rayDir,
-                            footRayLength,
-                            out float hitDist,
-                            out Vector3 hitNormal,
-                            out Vector3 hitPoint
-                        )
-                    )
-                    {
-                        if (Vector3.Dot(hitNormal, Vector3.UnitY) >= slopeMaxCos)
-                        {
-                            bestY = MathF.Max(bestY, hitPoint.Y);
-                        }
-                    }
-                }
-
-                if (bestY > float.MinValue)
-                {
-                    float predictedY = Owner.Position.Y + VerticalVelocity * deltaTime;
-                    // Snap if on/above ground and descending
-                    if (predictedY <= bestY + 0.05f)
-                    {
-                        Owner.Position = new Vector3(Owner.Position.X, bestY, Owner.Position.Z);
-                        VerticalVelocity = Math.Max(0, VerticalVelocity);
-                        IsGrounded = true;
-                    }
-                }
-            }
-
-            // Apply vertical motion (remaining fall)
-            if (!IsGrounded)
-            {
-                Owner.Position += new Vector3(0, VerticalVelocity * deltaTime, 0);
-            }
-
-            // Horizontal move + slide
+            // Horizontal move (rigidbody handles physics and collision)
             if (moveDir != Vector3.Zero)
             {
-                Vector3 original = Owner.Position;
-                Vector3 target = original + moveDir * MoveSpeed * deltaTime;
-
-                if (playerCollider != null && WallColliders != null)
-                {
-                    Owner.Position = target;
-                    bool fullHit = Collides(playerCollider, WallColliders);
-
-                    if (fullHit)
-                    {
-                        Owner.Position = original;
-
-                        Vector3 xPos = new Vector3(target.X, original.Y, original.Z);
-                        Owner.Position = xPos;
-                        bool xHit = Collides(playerCollider, WallColliders);
-
-                        Vector3 zPos = new Vector3(original.X, original.Y, target.Z);
-                        Owner.Position = zPos;
-                        bool zHit = Collides(playerCollider, WallColliders);
-
-                        if (xHit && zHit)
-                            Owner.Position = original;
-                        else if (xHit)
-                            Owner.Position = zPos;
-                        else if (zHit)
-                            Owner.Position = xPos;
-                    }
-                }
-                else
-                {
-                    Owner.Position = target;
-                }
+                rigidbody.Move(moveDir, MoveSpeed, deltaTime);
             }
-        }
-
-        private bool Collides(ColliderComponent self, List<ColliderComponent> walls)
-        {
-            // Position is snapped to floor, so we use it as feet reference
-            float feetY = self.Owner.Position.Y;
-            float stepHeight = 0.2f; // Tolerance for floor/steps
-
-            foreach (var w in walls)
-            {
-                if (w != null && self.CheckCollision(w))
-                {
-                    var (minW, maxW) = w.GetBounds();
-
-                    // Ignore if it's a floor (top is at or below our feet + step tolerance)
-                    if (maxW.Y <= feetY + stepHeight)
-                        continue;
-
-                    return true;
-                }
-            }
-            return false;
         }
 
         public Vector3 GetLookDirection()

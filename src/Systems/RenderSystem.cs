@@ -23,12 +23,23 @@ namespace DarkArmsProto.Systems
         private MapEditor mapEditor;
         private CombatSystem combatSystem;
         private bool showColliderDebug;
+        private bool showNavMesh;
         private RenderTexture2D sceneTarget;
+        private Shader pixelateShader;
+        private bool pixelateShaderLoaded = false;
+        private int pixelSizeLoc;
+        private int resolutionLoc;
 
         public bool ShowColliderDebug
         {
             get => showColliderDebug;
             set => showColliderDebug = value;
+        }
+
+        public bool ShowNavMesh
+        {
+            get => showNavMesh;
+            set => showNavMesh = value;
         }
 
         public RenderSystem(
@@ -53,16 +64,66 @@ namespace DarkArmsProto.Systems
             this.mapEditor = mapEditor;
             this.combatSystem = combatSystem;
             this.showColliderDebug = false;
+            this.showNavMesh = false;
 
             this.sceneTarget = Raylib.LoadRenderTexture(
                 Raylib.GetScreenWidth(),
                 Raylib.GetScreenHeight()
             );
+
+            // Load pixelate shader for post-processing
+            LoadPixelateShader();
+        }
+
+        private void LoadPixelateShader()
+        {
+            try
+            {
+                pixelateShader = Raylib.LoadShader(
+                    "resources/shaders/pixelate.vs",
+                    "resources/shaders/pixelate.fs"
+                );
+                pixelSizeLoc = Raylib.GetShaderLocation(pixelateShader, "pixelSize");
+                resolutionLoc = Raylib.GetShaderLocation(pixelateShader, "resolution");
+
+                // Set initial values
+                float pixelSize = 3.0f; // Adjust this for more/less pixelation
+                Raylib.SetShaderValue(
+                    pixelateShader,
+                    pixelSizeLoc,
+                    pixelSize,
+                    ShaderUniformDataType.Float
+                );
+
+                float[] resolution = new float[]
+                {
+                    Raylib.GetScreenWidth(),
+                    Raylib.GetScreenHeight(),
+                };
+                Raylib.SetShaderValue(
+                    pixelateShader,
+                    resolutionLoc,
+                    resolution,
+                    ShaderUniformDataType.Vec2
+                );
+
+                pixelateShaderLoaded = true;
+                System.Console.WriteLine("Pixelate shader loaded successfully");
+            }
+            catch (System.Exception e)
+            {
+                System.Console.WriteLine($"Failed to load pixelate shader: {e.Message}");
+                pixelateShaderLoaded = false;
+            }
         }
 
         public void Cleanup()
         {
             Raylib.UnloadRenderTexture(sceneTarget);
+            if (pixelateShaderLoaded)
+            {
+                Raylib.UnloadShader(pixelateShader);
+            }
         }
 
         /// <summary>
@@ -78,6 +139,18 @@ namespace DarkArmsProto.Systems
                     Raylib.GetScreenWidth(),
                     Raylib.GetScreenHeight()
                 );
+
+                // Update resolution for pixelate shader
+                if (pixelateShaderLoaded)
+                {
+                    float[] resolution = [Raylib.GetScreenWidth(), Raylib.GetScreenHeight()];
+                    Raylib.SetShaderValue(
+                        pixelateShader,
+                        resolutionLoc,
+                        resolution,
+                        ShaderUniformDataType.Vec2
+                    );
+                }
             }
 
             bool isEditor = mapEditor.IsActive;
@@ -95,7 +168,7 @@ namespace DarkArmsProto.Systems
 
             Raylib.EndTextureMode();
 
-            // 2. Draw Scene Texture to Screen
+            // 2. Draw Scene Texture to Screen with pixelate shader
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
 
@@ -112,6 +185,13 @@ namespace DarkArmsProto.Systems
                 Raylib.GetScreenWidth(),
                 Raylib.GetScreenHeight()
             );
+
+            // Apply pixelate shader if loaded
+            if (pixelateShaderLoaded)
+            {
+                Raylib.BeginShaderMode(pixelateShader);
+            }
+
             Raylib.DrawTexturePro(
                 sceneTarget.Texture,
                 sourceRec,
@@ -120,6 +200,11 @@ namespace DarkArmsProto.Systems
                 0.0f,
                 Color.White
             );
+
+            if (pixelateShaderLoaded)
+            {
+                Raylib.EndShaderMode();
+            }
 
             // 3. Render Weapon on top (if not editor)
             if (!isEditor)
@@ -178,13 +263,27 @@ namespace DarkArmsProto.Systems
             particleManager.Render();
             lightManager.Render(); // Dynamic lights (billboards)
 
-            // Debug colliders
+            // Debug visuals
             if (showColliderDebug)
             {
                 RenderDebugColliders();
             }
 
+            if (showNavMesh)
+            {
+                RenderNavMesh();
+            }
+
             Raylib.EndMode3D();
+        }
+
+        private void RenderNavMesh()
+        {
+            var currentRoom = roomManager.CurrentRoom;
+            if (currentRoom?.NavMesh != null)
+            {
+                currentRoom.NavMesh.Render();
+            }
         }
 
         private void RenderWeapon()
@@ -242,7 +341,7 @@ namespace DarkArmsProto.Systems
                 }
 
                 // Render UI
-                gameUI.RenderUI(combatSystem.Kills, showColliderDebug);
+                gameUI.RenderUI(combatSystem.Kills, showColliderDebug, showNavMesh);
                 gameUI.RenderEnemyHealthBars(roomManager.GetCurrentRoomEnemies());
             }
         }

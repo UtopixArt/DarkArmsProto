@@ -20,10 +20,26 @@ namespace DarkArmsProto.Factories
         {
             var player = new GameObject(position, "Player");
 
+            // Collider (must be added before Rigidbody for proper ground detection)
+            var colliderComp = new ColliderComponent();
+            colliderComp.Size = new Vector3(
+                GameConfig.PlayerColliderWidth,
+                GameConfig.PlayerColliderHeight,
+                GameConfig.PlayerColliderDepth
+            );
+            player.AddComponent(colliderComp);
+
+            // Rigidbody (physics)
+            var rigidbody = new RigidbodyComponent();
+            rigidbody.WallColliders = currentRoom.WallColliders;
+            rigidbody.GroundRayLength = 10.0f;
+            rigidbody.UseColliderBottomForRaycast = true; // Use collider bottom for raycast origin
+            rigidbody.ShowDebugRaycast = false; // Disable debug visualization for player
+            player.AddComponent(rigidbody);
+
             // Input & Control
             var inputComp = new PlayerInputComponent();
             inputComp.RoomCenter = currentRoom.WorldPosition;
-            inputComp.WallColliders = currentRoom.WallColliders;
             player.AddComponent(inputComp);
 
             // Camera
@@ -44,15 +60,6 @@ namespace DarkArmsProto.Factories
                 var shake = player.GetComponent<ScreenShakeComponent>();
                 shake?.AddTrauma(0.18f);
             };
-
-            // Collider
-            var colliderComp = new ColliderComponent();
-            colliderComp.Size = new Vector3(
-                GameConfig.PlayerColliderWidth,
-                GameConfig.PlayerColliderHeight,
-                GameConfig.PlayerColliderDepth
-            );
-            player.AddComponent(colliderComp);
 
             // Screen Shake
             var screenShake = new ScreenShakeComponent();

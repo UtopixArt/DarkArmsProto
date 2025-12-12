@@ -25,8 +25,8 @@ namespace DarkArmsProto.Components.AI
             }
 
             // Randomly switch to Wander
-            // Beasts patrol more aggressively
-            double wanderChance = (enemy.Type == SoulType.Beast) ? 0.05 : 0.01;
+            // More frequent and vigorous wandering
+            double wanderChance = (enemy.Type == SoulType.Beast) ? 0.15 : 0.05; // 3x more frequent
 
             if (enemy.Random.NextDouble() < wanderChance)
             {
@@ -44,20 +44,75 @@ namespace DarkArmsProto.Components.AI
     {
         private float timer;
         private Vector3 targetPos;
+        private bool hasValidTarget;
 
         public void Enter(EnemyAIComponent enemy)
         {
-            // Beasts wander much longer and further
-            float durationMult = (enemy.Type == SoulType.Beast) ? 3.0f : 1.0f;
-            float distMult = (enemy.Type == SoulType.Beast) ? 5.0f : 1.0f;
+            // Vigorous wandering - shorter but more dynamic
+            float durationMult = (enemy.Type == SoulType.Beast) ? 2.5f : 1.5f;
 
-            timer = ((float)enemy.Random.NextDouble() * 2.0f + 1.0f) * durationMult;
+            timer = ((float)enemy.Random.NextDouble() * 1.5f + 1.0f) * durationMult; // Shorter duration
+            hasValidTarget = false;
 
-            // Pick a random point around current pos
-            float angle = (float)enemy.Random.NextDouble() * MathF.PI * 2;
-            float dist = ((float)enemy.Random.NextDouble() * 3.0f + 1.0f) * distMult;
-            targetPos =
-                enemy.Owner.Position + new Vector3(MathF.Cos(angle), 0, MathF.Sin(angle)) * dist;
+            // Try to get a position from NavMesh if available
+            if (enemy.NavMesh != null)
+            {
+                // Much larger wander distances for vigorous movement
+                float maxDist = (enemy.Type == SoulType.Beast) ? 25.0f : 12.0f; // 2x further!
+
+                if (
+                    enemy.NavMesh.GetRandomWalkablePositionNear(
+                        enemy.Owner.Position,
+                        maxDist,
+                        enemy.Random,
+                        out targetPos
+                    )
+                )
+                {
+                    hasValidTarget = true;
+                }
+            }
+
+            // Fallback if no NavMesh or no valid position found
+            if (!hasValidTarget)
+            {
+                // Pick a random point and check if it's walkable (try 5 times)
+                int attempts = 0;
+                while (attempts < 5 && !hasValidTarget)
+                {
+                    attempts++;
+                    float angle = (float)enemy.Random.NextDouble() * MathF.PI * 2;
+                    float dist = (float)enemy.Random.NextDouble() * 5.0f + 2.0f;
+                    Vector3 candidatePos =
+                        enemy.Owner.Position
+                        + new Vector3(MathF.Cos(angle), 0, MathF.Sin(angle)) * dist;
+
+                    // Verify position is walkable using NavMesh if available
+                    if (enemy.NavMesh != null && enemy.NavMesh.IsWalkable(candidatePos))
+                    {
+                        targetPos = candidatePos;
+                        hasValidTarget = true;
+                    }
+                    else if (enemy.NavMesh == null)
+                    {
+                        // No NavMesh, accept position (fallback behavior)
+                        targetPos = candidatePos;
+                        hasValidTarget = true;
+                    }
+                }
+
+                // If still no valid target after attempts, use direct random position
+                // This allows movement even if NavMesh is very restrictive
+                if (!hasValidTarget)
+                {
+                    float angle = (float)enemy.Random.NextDouble() * MathF.PI * 2;
+                    float dist = (float)enemy.Random.NextDouble() * 3.0f + 1.5f;
+                    targetPos =
+                        enemy.Owner.Position
+                        + new Vector3(MathF.Cos(angle), 0, MathF.Sin(angle)) * dist;
+                    hasValidTarget = true;
+                }
+            }
         }
 
         public void Update(EnemyAIComponent enemy, float deltaTime)
@@ -79,7 +134,19 @@ namespace DarkArmsProto.Components.AI
                 return;
             }
 
-            enemy.MoveTowards(targetPos, enemy.Speed * 0.5f, deltaTime);
+            if (hasValidTarget)
+            {
+                // Check if reached target
+                float distToTarget = Vector3.Distance(enemy.Owner.Position, targetPos);
+                if (distToTarget < 1.5f) // Slightly larger acceptance radius
+                {
+                    enemy.ChangeState(new IdleState());
+                    return;
+                }
+
+                // Vigorous movement - faster wander speed (80% instead of 50%)
+                enemy.MoveTowards(targetPos, enemy.Speed * 0.8f, deltaTime);
+            }
         }
 
         public void Exit(EnemyAIComponent enemy) { }
@@ -116,16 +183,44 @@ namespace DarkArmsProto.Components.AI
                 return;
             }
 
-            // Move towards target
-            // If flying, we might want to hover at a certain height relative to player
+            // Move towards target using NavMesh pathfinding for ground enemies
             Vector3 targetPos = enemy.TargetObject.Position;
-            if (enemy.IsFlying)
-            {
-                // Fly slightly above player
-                targetPos.Y += 1.0f;
-            }
 
-            enemy.MoveTowards(targetPos, enemy.Speed, deltaTime);
+            // Use NavMesh pathfinding for ground enemies (not flying)
+            if (!enemy.IsFlying && enemy.NavMesh != null)
+            {
+                // Get next position toward target using pathfinding
+                Vector3 nextPos = enemy.NavMesh.GetNextPositionToward(
+                    enemy.Owner.Position,
+                    targetPos
+                );
+
+                float distToNext = Vector3.Distance(nextPos, enemy.Owner.Position);
+
+                // If pathfinding returns same position (stuck), try direct movement
+                if (distToNext < 0.1f)
+                {
+                    // Direct movement as fallback (pathfinding failed/blocked)
+                    enemy.MoveTowards(targetPos, enemy.Speed, deltaTime);
+                }
+                else
+                {
+                    // Follow pathfinding - move toward next waypoint
+                    enemy.MoveTowards(nextPos, enemy.Speed, deltaTime);
+                }
+            }
+            else
+            {
+                // Flying enemies: move directly but stay above ground
+                if (enemy.IsFlying)
+                {
+                    // Fly at a minimum height of 3.0f above ground level
+                    targetPos.Y = Math.Max(targetPos.Y, 3.0f);
+                }
+
+                // MoveTowards handles wall collision for both ground and flying enemies
+                enemy.MoveTowards(targetPos, enemy.Speed, deltaTime);
+            }
         }
 
         public void Exit(EnemyAIComponent enemy) { }
@@ -263,6 +358,7 @@ namespace DarkArmsProto.Components.AI
                     0,
                     (float)(enemy.Random.NextDouble() * 2 - 1) * 0.5f
                 );
+
                 moveDirection = Vector3.Normalize(moveDirection);
             }
         }

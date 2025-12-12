@@ -347,7 +347,13 @@ namespace DarkArmsProto.World
             if (inputComp != null)
             {
                 inputComp.RoomCenter = currentRoom.WorldPosition;
-                inputComp.WallColliders = currentRoom.WallColliders;
+            }
+
+            // Update rigidbody wall colliders
+            var rigidbody = player.GetComponent<RigidbodyComponent>();
+            if (rigidbody != null)
+            {
+                rigidbody.WallColliders = currentRoom.WallColliders;
             }
         }
 
