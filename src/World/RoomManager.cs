@@ -17,6 +17,7 @@ namespace DarkArmsProto.World
         private Room? currentRoom;
         private Random random;
         private LightManager? lightManager;
+        private Systems.ProjectileManager? projectileManager;
         private List<RoomLayout> roomTemplates = new List<RoomLayout>();
         private EnemySpawnSystem spawnSystem = new EnemySpawnSystem();
 
@@ -62,6 +63,11 @@ namespace DarkArmsProto.World
             this.lightManager = lm;
         }
 
+        public void SetProjectileManager(Systems.ProjectileManager pm)
+        {
+            this.projectileManager = pm;
+        }
+
         public void GenerateDungeon()
         {
             // Retry loop to ensure a good dungeon layout
@@ -99,6 +105,9 @@ namespace DarkArmsProto.World
             }
 
             currentRoom.OnEnter();
+
+            // Initialize ProjectileManager with starting room walls
+            projectileManager?.SetWalls(currentRoom.WallColliders);
 
             // Connect rooms with doors
             ConnectRooms();
@@ -355,6 +364,9 @@ namespace DarkArmsProto.World
             {
                 rigidbody.WallColliders = currentRoom.WallColliders;
             }
+
+            // Update ProjectileManager with current room walls (for laser bouncing)
+            projectileManager?.SetWalls(currentRoom.WallColliders);
         }
 
         public Vector3 GetRoomCenterOffset(Vector3 playerPosition)

@@ -16,6 +16,10 @@ namespace DarkArmsProto.Data
         public float ExplosionRadius { get; set; } = 0f;
         public float Spread { get; set; } = 0f;
         public float DamagePerProjectile { get; set; } = 1.0f;
+        public bool IsLaser { get; set; } = false;
+        public float LaserRange { get; set; } = 100f;
+        public float LaserThickness { get; set; } = 0.05f;
+        public int LaserBounces { get; set; } = 0; // Number of wall bounces (0 = no bounce)
 
         public Raylib_cs.Color GetColor()
         {

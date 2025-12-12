@@ -91,6 +91,7 @@ namespace DarkArmsProto
             mapEditor.SetParticleManager(particleManager);
 
             roomManager.SetLightManager(lightManager);
+            roomManager.SetProjectileManager(projectileManager);
 
             // Inject shooting dependencies into PlayerInputComponent
             var playerInput = player.GetComponent<PlayerInputComponent>();

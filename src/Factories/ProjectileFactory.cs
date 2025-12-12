@@ -39,6 +39,20 @@ namespace DarkArmsProto.Factories
                 finalDir = Vector3.Normalize(finalDir);
             }
 
+            // LASER TYPE - Raycast weapon
+            if (data.IsLaser)
+            {
+                return CreateLaserProjectile(
+                    position,
+                    finalDir,
+                    baseDamage * data.DamagePerProjectile,
+                    data,
+                    isEnemyProjectile,
+                    explosionCallback
+                );
+            }
+
+            // NORMAL PROJECTILE
             var builder = new ProjectileBuilder()
                 .AtPosition(position)
                 .WithDirection(finalDir, data.Speed)
@@ -74,6 +88,66 @@ namespace DarkArmsProto.Factories
             }
 
             return builder.Build();
+        }
+
+        /// <summary>
+        /// Create a laser raycast projectile
+        /// </summary>
+        private static GameObject CreateLaserProjectile(
+            Vector3 position,
+            Vector3 direction,
+            float damage,
+            ProjectileData data,
+            bool isEnemyProjectile,
+            Action<Vector3, float, float>? explosionCallback = null
+        )
+        {
+            var laser = new GameObject(
+                position,
+                isEnemyProjectile ? "EnemyProjectile" : "Projectile"
+            );
+
+            // Projectile component with very short lifetime (laser flash)
+            var projectileComp = new ProjectileComponent
+            {
+                Velocity = Vector3.Zero, // Laser doesn't move
+                Damage = damage,
+                Lifetime = 0.1f, // Short flash
+                IsEnemyProjectile = isEnemyProjectile
+            };
+            laser.AddComponent(projectileComp);
+
+            // Laser behavior (raycast logic)
+            var laserBehavior = new Components.Behaviors.LaserBehavior(
+                position,
+                direction,
+                data.LaserRange,
+                damage,
+                data.Explosive,
+                data.ExplosionRadius,
+                explosionCallback,
+                data.LaserBounces
+            );
+            projectileComp.AddBehavior(laserBehavior);
+
+            // Laser render component
+            var laserRender = new LaserRenderComponent
+            {
+                Color = data.GetColor(),
+                Thickness = data.LaserThickness,
+                GlowIntensity = 2.0f
+            };
+            laser.AddComponent(laserRender);
+
+            // Collider (not really used for lasers, but kept for compatibility)
+            var collider = new ColliderComponent
+            {
+                Size = new Vector3(data.Size, data.Size, data.Size),
+                IsTrigger = true
+            };
+            laser.AddComponent(collider);
+
+            return laser;
         }
 
         /// <summary>

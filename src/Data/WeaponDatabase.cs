@@ -127,7 +127,7 @@ namespace DarkArmsProto.Data
             if (!isLoaded)
                 Load();
 
-            return GetByName("flesh_pistol")!;
+            return GetByName("plasma_laser")!;
         }
     }
 }

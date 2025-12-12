@@ -160,6 +160,68 @@
       ]
     },
     {
+      "id": "plasma_laser",
+      "name": "Plasma Laser",
+      "stage": 3,
+      "soul_type": "Demon",
+      "damage_multiplier": 1.5,
+      "fire_rate_multiplier": 1.0,
+      "projectiles": [
+        {
+          "count": 1,
+          "speed": 0.0,
+          "size": 0.1,
+          "color": [
+            0,
+            255,
+            255,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": true,
+          "homing": true,
+          "explosive": true,
+          "explosion_radius": 20.0,
+          "spread": 0.02,
+          "is_laser": true,
+          "laser_range": 100000.0,
+          "laser_thickness": 0.15,
+          "laser_bounces": 120
+        }
+      ]
+    },
+    {
+      "id": "shootgun_laser",
+      "name": "Shootgun Laser",
+      "stage": 3,
+      "soul_type": "Beast",
+      "damage_multiplier": 1.5,
+      "fire_rate_multiplier": 4.0,
+      "projectiles": [
+        {
+          "count": 8,
+          "speed": 0.0,
+          "size": 0.1,
+          "color": [
+            0,
+            255,
+            255,
+            255
+          ],
+          "piercing": false,
+          "lifesteal": true,
+          "homing": true,
+          "explosive": true,
+          "explosion_radius": 2.0,
+          "spread": 0.05,
+          "is_laser": true,
+          "laser_range": 100.0,
+          "laser_thickness": 0.05,
+          "damage_per_projectile": 0.4
+        }
+      ]
+    },
+    {
       "id": "inferno_beast",
       "name": "Inferno Beast",
       "stage": 3,
